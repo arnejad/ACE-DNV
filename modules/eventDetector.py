@@ -7,7 +7,7 @@ from config import PATCH_DIST_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH
 
 sift = cv.SIFT_create()
 
-def eventDetector(patch1, patch2, magF, angF, gazeCoord1, gazeCoord2):
+def  eventDetector(patch1, patch2, magF, angF, gazeCoord1, gazeCoord2):
     
     if (min(patch1.shape)==0) or (min(patch2.shape)==0):
         print("no content detected")

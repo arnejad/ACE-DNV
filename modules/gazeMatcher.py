@@ -19,4 +19,8 @@ def gazeMatcher(timestamps, gazes):
             else:
                 res.append([timestamps[f], gazes[g-1,1], gazes[g-1,2]])
                 f = f+1
+        if g==len(gazes): #if no gaze left to assign to frame, repear the final gaze location #TODO: Improve assigning
+            res.append([timestamps[f], gazes[g-1,1], gazes[g-1,2]])
+            f = f+1
+            
     return res
