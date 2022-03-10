@@ -3,13 +3,14 @@ from os import path, mkdir
 from config import OUT_DIR
 
 
-def panelInitializer():
+def knowledgePanel_init():  # opens and initialized the visualization configs for knowledge panel 
     plt.rcParams["figure.figsize"] = [19, 20]
     plt.rcParams["figure.autolayout"] = True
     fig, axs = plt.subplots(4)
     return fig, axs
 
-def panel(axs, nxtPatch, finalRes):
+# updates the contents of knowledge panel
+def knowledgePanel_update(axs, nxtPatch, finalRes):
     axs[0].clear()
     axs[1].clear()
     axs[2].clear()
@@ -24,6 +25,7 @@ def panel(axs, nxtPatch, finalRes):
     axs[3].imshow(nxtPatch)
     
 
+# Saves a png file for changes in gaze coordinats
 def gazeCoordsPlotSave(gazes):
     fig,ax=plt.subplots(figsize=(20,5))
     plt.plot(gazes[:,1]) 

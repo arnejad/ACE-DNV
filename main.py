@@ -64,14 +64,14 @@ visual.gazeCoordsPlotSave(gazeMatch)
 
 ###### ANALYSIS
 f = 1 #frame counter
-cap = cv.VideoCapture(cv.samples.findFile(vidPath))
-ret, frame1 = cap.read()
-prvFrame = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
+cap = cv.VideoCapture(cv.samples.findFile(vidPath)) #prepare the target video
+ret, frame1 = cap.read() #read a frame
+prvFrame = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)   #color conversion to grayscale
 prvPatch = patchExtractor(prvFrame, gazeMatch[0][1:])
 
 finalRes = np.array([[0,0,0]])
 
-fig, axs = visual.panelInitializer()
+fig, axs = visual.knowledgePanel_init()    #initiallization of knowledge panel
 
 while(1):
     ret, frame2 = cap.read()
@@ -83,16 +83,20 @@ while(1):
 
     magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
 
+    # Pass the extracted knowledge to make the final desicion
     res = eventDetector(prvPatch, nxtPatch, magF, angF, gazeMatch[f-1][1:], gazeMatch[f][1:])
     print(res)
-    finalRes = np.append(finalRes, res, axis=0)
+    finalRes = np.append(finalRes, res, axis=0) #store all the responses
 
+    #update the traversing freames
     f = f+1
     prvPatch = nxtPatch
     prvFrame = nxtFrame
+
+    #knowledge panel visualization
     if VISUALIZE:
         if (min(nxtPatch.shape)>0):
-            visual.panel(axs, nxtPatch, finalRes)
+            visual.knowledgePanel_update(axs, nxtPatch, finalRes)
             plt.pause(0.01)
 
         # Press Q on keyboard to  exit
