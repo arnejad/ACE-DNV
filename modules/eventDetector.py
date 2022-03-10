@@ -11,14 +11,18 @@ def  eventDetector(patch1, patch2, magF, angF, gazeCoord1, gazeCoord2):
     
     if (min(patch1.shape)==0) or (min(patch2.shape)==0):
         print("no content detected")
-        return "None"
+        # return "None"
+        return [[0, 0, 0]]
+
 
     kps1, descs1 = sift.detectAndCompute(patch1,None)
     kps2, descs2 = sift.detectAndCompute(patch2,None)
     
     if (descs1 is None) or (descs2 is None):
         print("no content detected")
-        return "None"
+        # return "None"
+        return [[0, 0, 0]]
+
 
     #concatinate the features
     allDescs = np.empty((0, 128), int)
@@ -40,26 +44,26 @@ def  eventDetector(patch1, patch2, magF, angF, gazeCoord1, gazeCoord2):
     # print(magMean)
 
     ## final decision
-    if patchDist > PATCH_DIST_THRESH:
-        if gazeDist > GAZE_DIST_THRESH:
-            return "PotSAC"
-        elif gazeDist < GAZE_DIST_THRESH:
-            if magMean > ENV_CHANGE_THRESH:
-                return "fixation"
+    # if patchDist > PATCH_DIST_THRESH:
+    #     if gazeDist > GAZE_DIST_THRESH:
+    #         return "PotSAC"
+    #     elif gazeDist < GAZE_DIST_THRESH:
+    #         if magMean > ENV_CHANGE_THRESH:
+    #             return "fixation"
     
-    else:# patchDist < PATCH_DIST_THRESH:
-        if gazeDist > GAZE_DIST_THRESH:
-            if magMean > ENV_CHANGE_THRESH:
-                return "fixWithHead"
-            else:
-                return "SmoothPursuit"
-        else:
-            if magMean < ENV_CHANGE_THRESH:
-                return "HeadPursuit"
-            else:
-                return "fixation"
+    # else:# patchDist < PATCH_DIST_THRESH:
+    #     if gazeDist > GAZE_DIST_THRESH:
+    #         if magMean > ENV_CHANGE_THRESH:
+    #             return "fixWithHead"
+    #         else:
+    #             return "SmoothPursuit"
+    #     else:
+    #         if magMean < ENV_CHANGE_THRESH:
+    #             return "HeadPursuit"
+    #         else:
+    #             return "fixation"
 
-    return "None"
-    #patch content similarity measurement
+    # return "None"
+    return [[patchDist, gazeDist, magMean]]
 
     

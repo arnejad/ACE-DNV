@@ -3,7 +3,7 @@
 from os import listdir, path, mkdir
 from os.path import isfile, join
 import csv
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import numpy as np
 import cv2 as cv
 
@@ -11,6 +11,7 @@ from modules.opticalFlow import opticalFlow
 from modules.gazeMatcher import gazeMatcher
 from modules.patchExtractor import patchExtractor
 from modules.eventDetector import eventDetector
+import modules.visualizer as visual
 from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR
 
 
@@ -59,15 +60,8 @@ gazeMatch = np.array(gazeMatcher(timestamps, gazes))
 gazeMatch[:,1] = gazeMatch[:,1]+GAZE_ERROR[0]
 gazeMatch[:,2] = gazeMatch[:,2]+GAZE_ERROR[1]
 
-fig,ax=plt.subplots(figsize=(20,5))
-plt.plot(gazes[:,1]) 
-plt.plot(gazes[:,2]) 
+visual.gazeCoordsPlotSave(gazeMatch)
 
-if not path.exists(OUT_DIR): mkdir(OUT_DIR)
-if not path.exists(OUT_DIR+'/figs/'): mkdir(OUT_DIR+'/figs/')
-
-plt.savefig(OUT_DIR+'/figs/gazeCoords.png')
-plt.close()
 ###### ANALYSIS
 f = 1 #frame counter
 cap = cv.VideoCapture(cv.samples.findFile(vidPath))
@@ -75,7 +69,18 @@ ret, frame1 = cap.read()
 prvFrame = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
 prvPatch = patchExtractor(prvFrame, gazeMatch[0][1:])
 
-finalRes = []
+finalRes = np.array([[0,0,0]])
+# plt.ion()
+
+# global fig, axs
+plt.rcParams["figure.figsize"] = [19, 20]
+plt.rcParams["figure.autolayout"] = True
+fig, axs = plt.subplots(4)
+axs[0].set_title('patch dist')
+axs[1].set_title('gaze distance')
+axs[2].set_title('env change')
+axs[3].set_title('gaze patch')
+
 while(1):
     ret, frame2 = cap.read()
     if not ret:
@@ -88,19 +93,21 @@ while(1):
 
     res = eventDetector(prvPatch, nxtPatch, magF, angF, gazeMatch[f-1][1:], gazeMatch[f][1:])
     print(res)
-    finalRes.append(res)
+    finalRes = np.append(finalRes, res, axis=0)
 
     f = f+1
     prvPatch = nxtPatch
     prvFrame = nxtFrame
     if VISUALIZE:
         if (min(nxtPatch.shape)>0):
-            cv.imshow('Frame', prvPatch)
-        
+            visual.panel(axs, nxtPatch, finalRes)
+            plt.pause(0.01)
+
         # Press Q on keyboard to  exit
         if cv.waitKey(25) & 0xFF == ord('q'):
             break
     
+plt.show()
 
 cap.release()
 cv.destroyAllWindows()
