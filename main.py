@@ -70,16 +70,8 @@ prvFrame = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
 prvPatch = patchExtractor(prvFrame, gazeMatch[0][1:])
 
 finalRes = np.array([[0,0,0]])
-# plt.ion()
 
-# global fig, axs
-plt.rcParams["figure.figsize"] = [19, 20]
-plt.rcParams["figure.autolayout"] = True
-fig, axs = plt.subplots(4)
-axs[0].set_title('patch dist')
-axs[1].set_title('gaze distance')
-axs[2].set_title('env change')
-axs[3].set_title('gaze patch')
+fig, axs = visual.panelInitializer()
 
 while(1):
     ret, frame2 = cap.read()

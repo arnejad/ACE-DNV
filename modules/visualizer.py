@@ -1,7 +1,13 @@
-import imp
 import matplotlib.pyplot as plt
 from os import path, mkdir
 from config import OUT_DIR
+
+
+def panelInitializer():
+    plt.rcParams["figure.figsize"] = [19, 20]
+    plt.rcParams["figure.autolayout"] = True
+    fig, axs = plt.subplots(4)
+    return fig, axs
 
 def panel(axs, nxtPatch, finalRes):
     axs[0].clear()
