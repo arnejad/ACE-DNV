@@ -12,6 +12,7 @@ from modules.gazeMatcher import gazeMatcher
 from modules.patchExtractor import patchExtractor
 from modules.eventDetector import eventDetector
 import modules.visualizer as visual
+from modules.PatchSimNet import create_network as createSimNet
 from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR
 
 
@@ -73,6 +74,8 @@ finalRes = np.array([[0,0,0]])
 
 fig, axs = visual.knowledgePanel_init()    #initiallization of knowledge panel
 
+patchSimNet_params = createSimNet()
+
 while(1):
     ret, frame2 = cap.read()
     if not ret:
@@ -84,7 +87,7 @@ while(1):
     magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
 
     # Pass the extracted knowledge to make the final desicion
-    res = eventDetector(prvPatch, nxtPatch, magF, angF, gazeMatch[f-1][1:], gazeMatch[f][1:])
+    res = eventDetector(prvPatch, nxtPatch, magF, angF, gazeMatch[f-1][1:], gazeMatch[f][1:], patchSimNet_params)
     print(res)
     finalRes = np.append(finalRes, res, axis=0) #store all the responses
 
@@ -97,7 +100,7 @@ while(1):
     if VISUALIZE:
         if (min(nxtPatch.shape)>0):
             visual.knowledgePanel_update(axs, nxtPatch, finalRes)
-            plt.pause(0.01)
+            plt.pause(0.0000001)
 
         # Press Q on keyboard to  exit
         if cv.waitKey(25) & 0xFF == ord('q'):
