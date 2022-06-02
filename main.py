@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2 as cv
 
-from modules.opticalFlow import opticalFlow
-from modules.gazeMatcher import gazeMatcher
+from modules.opticalFlow import opticalFlow, headChange
+from modules.timeMatcher import timeMatcher
 from modules.patchExtractor import patchExtractor
 from modules.eventDetector import eventDetector
 import modules.visualizer as visual
@@ -56,10 +56,23 @@ if ~CLOUD_FORMAT:
 else:
     gazes = tempRead[1:, 2:]
 
+# check if imu data exists.
+if not path.exists(INP_DIR+'/imu_data.csv'): raise Exception("Could not find the imu_data.csv file")
+imuPath = INP_DIR+'/imu_data.csv'
+
+imu = np.genfromtxt(imuPath, delimiter=',') #read the imu signal
+imu = imu[1:, :]
+imu = np.delete(imu, 1,1)
+
 ###### PREPROCESS
-gazeMatch = np.array(gazeMatcher(timestamps, gazes))
+gazeMatch = np.array(timeMatcher(timestamps, gazes))
 gazeMatch[:,1] = gazeMatch[:,1]+GAZE_ERROR[0]
 gazeMatch[:,2] = gazeMatch[:,2]+GAZE_ERROR[1]
+
+
+imuMatch = np.array(timeMatcher(timestamps, imu))
+
+headMag = headChange(imuMatch)
 
 visual.gazeCoordsPlotSave(gazeMatch)
 
@@ -84,10 +97,10 @@ while(1):
     nxtFrame = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
     nxtPatch = patchExtractor(nxtFrame, gazeMatch[f][1:])
 
-    magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
+    # magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
 
     # Pass the extracted knowledge to make the final desicion
-    res = eventDetector(prvPatch, nxtPatch, magF, angF, gazeMatch[f-1][1:], gazeMatch[f][1:], patchSimNet_params)
+    res = eventDetector(prvPatch, nxtPatch, headMag[f], gazeMatch[f-1][1:], gazeMatch[f][1:], patchSimNet_params)
     print(res)
     finalRes = np.append(finalRes, res, axis=0) #store all the responses
 
