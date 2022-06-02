@@ -126,9 +126,9 @@ finalEvents = finalEvents[1:]
 cap.release()
 cv.destroyAllWindows()
 
-f = open('res.csv', 'w')
+f = open(OUT_DIR+'res.csv', 'w')
 writer = csv.writer(f)
 writer.writerow(finalEvents)
 f.close()
 
-np.savetxt('gazeMatch.csv', gazeMatch, delimiter=',')
+np.savetxt(OUT_DIR+'gazeMatch.csv', gazeMatch, delimiter=',')

@@ -1,5 +1,5 @@
-INP_DIR = '../sample' # the input directory containing the video and gaze signal
-OUT_DIR = INP_DIR+'/res'
+INP_DIR = '../sample2/' # the input directory containing the video and gaze signal
+OUT_DIR = INP_DIR+'res/'
 CLOUD_FORMAT = False
 VIDEO_SIZE = [1088, 1080]  # [width, height]
 GAZE_ERROR = [17, 0] # [x, y]
