@@ -1,6 +1,6 @@
 # This code has been developed by Ashkan Nejad at Royal Dutch Visio and Univeristy Medical Center Groningen
 
-from os import listdir, path, mkdir
+from os import listdir, path
 from os.path import isfile, join
 import csv
 import matplotlib.pyplot as plt
@@ -8,6 +8,7 @@ import numpy as np
 import cv2 as cv
 
 from modules.opticalFlow import opticalFlow, headChange
+from modules.postprocessor import postprocess
 from modules.timeMatcher import timeMatcher
 from modules.patchExtractor import patchExtractor
 from modules.eventDetector import eventDetector
@@ -123,6 +124,7 @@ while(1):
             break
     
 finalEvents = finalEvents[1:]
+finalEvents = postprocess(finalEvents)
 cap.release()
 cv.destroyAllWindows()
 
