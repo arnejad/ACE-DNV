@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2 as cv
 
-from modules.opticalFlow import opticalFlow, headChange
+from modules.wildMove import imuAnalyzer
 from modules.postprocessor import postprocess
 from modules.timeMatcher import timeMatcher
 from modules.patchExtractor import patchExtractor
@@ -73,7 +73,7 @@ gazeMatch[:,2] = gazeMatch[:,2]+GAZE_ERROR[1]
 
 imuMatch = np.array(timeMatcher(timestamps, imu))
 
-headMag = headChange(imuMatch)
+headMag = imuAnalyzer(imuMatch)
 
 visual.gazeCoordsPlotSave(gazeMatch)
 

@@ -5,7 +5,6 @@ from modules.PatchSimNet import perdict
 import cv2 as cv
 
 from config import PATCH_SIM_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH, PATCH_SIZE, LAMBDA, PATCH_PRIOR_STEPS
-import modules.patchContent as patchContent
 
 
 def  eventDetector(patch1, patch2, pastPatchDist, envMag, gazeCoord1, gazeCoord2, patchSimNet_params):

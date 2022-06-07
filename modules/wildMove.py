@@ -10,7 +10,7 @@ def opticalFlow(frame1, frame2):
     return mag, ang
 
 
-def headChange(imu):
+def imuAnalyzer(imu):
     #using the Gyro signal
     gyro = imu[:,1:4]
     
