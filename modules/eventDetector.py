@@ -2,12 +2,13 @@ from requests import patch
 from scipy.spatial import distance
 import numpy as np
 from modules.PatchSimNet import perdict
+from modules.wildMove import OFAnalyzer
 import cv2 as cv
 
 from config import PATCH_SIM_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH, PATCH_SIZE, LAMBDA, PATCH_PRIOR_STEPS
 
 
-def  eventDetector(patch1, patch2, pastPatchDist, envMag, gazeCoord1, gazeCoord2, patchSimNet_params):
+def  eventDetector(patch1, patch2, pastPatchDist, envMag, gazeCoord1, gazeCoord2, patchSimNet_params, frameNum):
     
     # patchDist = patchContent.compare_old(patch1, patch2) #compute the patch content similarity
     inp = np.zeros((2, PATCH_SIZE, PATCH_SIZE))
@@ -22,6 +23,9 @@ def  eventDetector(patch1, patch2, pastPatchDist, envMag, gazeCoord1, gazeCoord2
     patchDistAvg = ((1-LAMBDA)*patchDist.item() + LAMBDA*(pastPatchDist/PATCH_PRIOR_STEPS))
     gazeDist = distance.euclidean(gazeCoord1, gazeCoord2) #compute the gaze location change
 
+    atten_flow = OFAnalyzer(frameNum, gazeCoord1, gazeCoord2)
+
+    envMag = np.linalg.norm(atten_flow)
 
     # print(magMean)
     decision = ""
