@@ -1,4 +1,5 @@
 # This code has been developed by Ashkan Nejad at Royal Dutch Visio and Univeristy Medical Center Groningen
+# personal conda env: dfvo2
 
 from os import listdir, path
 from os.path import isfile, join

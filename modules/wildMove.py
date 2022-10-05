@@ -4,7 +4,7 @@ from modules.patchExtractor import patchExtractor
 
 from config import PRE_OPFLOW, INP_DIR,VIDEO_SIZE
 
-def similarity (a,b):
+def cosine_similarity (a,b):
     return np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b))
 
 def opticalFlow_old(frame1, frame2):
@@ -56,7 +56,7 @@ def goWithTheFlow(flow_u, flow_v, gazeCoord):
                     continue
 
                 if not visit_map[y+y_t, x+x_t]:
-                    sim = similarity([sum_u/(traved+1), sum_v/(traved+1)], [flow_u[y+y_t, x+x_t], flow_v[y+y_t, x+x_t]])
+                    sim = cosine_similarity([sum_u/(traved+1), sum_v/(traved+1)], [flow_u[y+y_t, x+x_t], flow_v[y+y_t, x+x_t]])
                     visit_map[y+y_t, x+x_t] = 1
                     if(sim >0.912):
                         segmentX.append(x+x_t)
@@ -92,7 +92,7 @@ def OFAnalyzer(frameNum, gazeCoord1, gazeCoord2):
     sameBehaveCat = np.zeros(VIDEO_SIZE)
     for i in range(VIDEO_SIZE[0]):      #TODO change to algebric operation
         for j in range(VIDEO_SIZE[1]):
-            sim = similarity(meanGazeFlow, [flow_u[i,j], flow_v[i,j]])
+            sim = cosine_similarity(meanGazeFlow, [flow_u[i,j], flow_v[i,j]])
             if sim > 0.912:
                 sameBehaveCat[i,j] = 1
     
@@ -108,11 +108,20 @@ def OFAnalyzer(frameNum, gazeCoord1, gazeCoord2):
     
     # bg_uv
 
-    gaze_atten_sim = similarity(gazeCoord2-gazeCoord1, atten_uv)
-    gaze_bg_sim = similarity(gazeCoord2-gazeCoord1, bg_uv)
+    gaze_atten_sim = cosine_similarity(gazeCoord2-gazeCoord1, atten_uv)
+    gaze_bg_sim = cosine_similarity(gazeCoord2-gazeCoord1, bg_uv)
 
 
 
+def VOAnalyzer(i):
+    #TODO: connect DF-VO here
+    #reading DFVO results for now
+
+    visod = np.loadtxt(INP_DIR+"/visod.txt", delimiter=' ')
+    orient_dist = cosine_similarity(visod[i, 4:7], visod[i-1, 4:7])
+    # orient_dist = np.linalg.norm(visod[i, 4:7])
+    return orient_dist
+
+    
 
 
-        
