@@ -1,4 +1,5 @@
 # This code has been developed by Ashkan Nejad at Royal Dutch Visio and Univeristy Medical Center Groningen
+# personal conda env: dfvo2
 
 from os import listdir, path
 from os.path import isfile, join
@@ -53,7 +54,7 @@ if ~CLOUD_FORMAT:
     gazes = tempRead[1:,[0,3,4]]
     #the corrdinate origin is bottom left
     gazes[:,2] = 1 - gazes[:,2]
-    gazes = gazes * [1, VIDEO_SIZE[0], VIDEO_SIZE[1]]
+    gazes = gazes * [1, VIDEO_SIZE[1], VIDEO_SIZE[0]]
 else:
     gazes = tempRead[1:, 2:]
 
@@ -73,7 +74,7 @@ gazeMatch[:,2] = gazeMatch[:,2]+GAZE_ERROR[1]
 
 imuMatch = np.array(timeMatcher(timestamps, imu))
 
-headMag = imuAnalyzer(imuMatch)
+imuMag = imuAnalyzer(imuMatch)
 
 visual.gazeCoordsPlotSave(gazeMatch)
 
@@ -103,7 +104,8 @@ while(1):
     # magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
 
     # Pass the extracted knowledge to make the final desicion
-    event, res = eventDetector(prvPatch, nxtPatch, np.sum(finalRes[-PATCH_PRIOR_STEPS:,0]),headMag[f], gazeMatch[f-1][1:], gazeMatch[f][1:], patchSimNet_params)
+
+    event, res = eventDetector(prvPatch, nxtPatch, np.sum(finalRes[-PATCH_PRIOR_STEPS:,0]),imuMag[f], gazeMatch[f-1][1:], gazeMatch[f][1:], patchSimNet_params, f)
 
     print(event)
     finalRes = np.append(finalRes, res, axis=0) #store all the responses

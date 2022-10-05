@@ -1,5 +1,5 @@
 # DATA VARIABLES
-INP_DIR = '../sample/'      # the input directory containing the video and gaze signal
+INP_DIR = '/home/ashdev/samples/004'      # the input directory containing the video and gaze signal
 OUT_DIR = INP_DIR+'res/'
 CLOUD_FORMAT = False        #Set to to True if the data has been uploaded to cloud and downloaded (for Pupil devices)
 
