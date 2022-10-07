@@ -5,6 +5,8 @@ from modules.patchExtractor import patchExtractor
 from config import PRE_OPFLOW, INP_DIR,VIDEO_SIZE
 
 def cosine_similarity (a,b):
+    if np.dot(a, b) == 0:
+        return 0
     return np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b))
 
 def opticalFlow_old(frame1, frame2):
@@ -117,8 +119,9 @@ def VOAnalyzer(i):
     #TODO: connect DF-VO here
     #reading DFVO results for now
 
-    visod = np.loadtxt(INP_DIR+"/visod.txt", delimiter=' ')
-    orient_dist = cosine_similarity(visod[i, 4:7], visod[i-1, 4:7])
+    visod = np.loadtxt(INP_DIR+"1/2/visOdom.txt", delimiter=' ')
+    # orient_dist = cosine_similarity(visod[i, 4:7], visod[i-1, 4:7])
+    orient_dist = np.sum(np.abs(visod[i-1, 4:7] - visod[i, 4:7]))
     # orient_dist = np.linalg.norm(visod[i, 4:7])
     return orient_dist
 
