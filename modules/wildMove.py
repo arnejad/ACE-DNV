@@ -115,13 +115,17 @@ def OFAnalyzer(frameNum, gazeCoord1, gazeCoord2):
 
 
 
-def VOAnalyzer(i):
+def VOAnalyzer():
     #TODO: connect DF-VO here
     #reading DFVO results for now
 
     visod = np.loadtxt(INP_DIR+"1/2/visOdom.txt", delimiter=' ')
     # orient_dist = cosine_similarity(visod[i, 4:7], visod[i-1, 4:7])
-    orient_dist = np.sum(np.abs(visod[i-1, 4:7] - visod[i, 4:7]))
+
+
+    orient_dist = np.sum(np.abs(visod[:-1,4:7] - visod[1:, 4:7]), axis=1)
+
+
     # orient_dist = np.linalg.norm(visod[i, 4:7])
     return orient_dist
 

@@ -1,23 +1,21 @@
 # This code has been developed by Ashkan Nejad at Royal Dutch Visio and Univeristy Medical Center Groningen
 # personal conda env: dfvo2
 
+from enum import unique
 from os import listdir, path
 from os.path import isfile, join
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2 as cv
 import scipy.io
-import h5py
+from scipy.spatial import distance
 
 from modules.wildMove import VOAnalyzer
-from modules.postprocessor import postprocess
 from modules.timeMatcher import timeMatcher
-from modules.patchExtractor import patchExtractor
-from modules.eventDetector import eventDetector
 import modules.visualizer as visual
-from modules.PatchSimNet import create_network as createSimNet
-from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, PATCH_PRIOR_STEPS, DATASET, ACTIVITY_NUM, ACIVITY_NAMES
+from modules.PatchSimNet import pred_all as patchNet_predAll
+from NEED import train as NEED_train
+from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES
 
 
 ##### DATA PREPARATION
@@ -109,14 +107,21 @@ elif DATASET == "GiW":
         labels = mat = scipy.io.loadmat(INP_DIR + '/Extracted_Data/' + activityName + '/Labels/' + \
         'PrIdx_'+participants[p]+'_TrIdx_' + str(ACTIVITY_NUM) + '_Lbr_1.mat')
 
-        labels = np.array(labels['LabelData']['Labels'])
+        labels = np.array(labels['LabelData']['Labels'][0])
+        
 
         gazes = np.array(processData['ProcessData']['ETG'][0,0][0,0][8] * processData['ProcessData']['ETG'][0,0][0,0][0])
 
+        frames = processData['ProcessData']['ETG'][0,0][0,0][5]
+
         # matching gazes with frames by finding unique values
         u, indcs = np.unique(np.array(processData['ProcessData']['ETG'][0,0][0,0][5]), return_index=True)
+       
+
         gazeMatch = gazes[indcs]
-        
+        labels = labels[0][indcs]
+        frames = frames[0][indcs]
+        labels = np.squeeze(labels)
         startFrame = np.amax(np.array(processData['ProcessData']['ETG'][0,0][0,0][5]))
         endFrame = np.amax(np.array(processData['ProcessData']['ETG'][0,0][0,0][5]))
 
@@ -129,64 +134,84 @@ elif DATASET == "GiW":
 
 
 ###### ANALYSIS
-f = 1 #frame counter
-cap = cv.VideoCapture(cv.samples.findFile(vidPath)) #prepare the target video
-ret, frame1 = cap.read() #read a frame
-prvFrame = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)   #color conversion to grayscale
-# prvPatch = patchExtractor(prvFrame, gazeMatch[0][1:])
-prvPatch = patchExtractor(prvFrame, gazeMatch[0])
 
-finalRes = np.array([[0,0,0,0]])
-finalEvents = np.array([""])
 
-fig, axs = visual.knowledgePanel_init()    #initiallization of knowledge panel
+# fig, axs = visual.knowledgePanel_init()    #initiallization of knowledge panel
 
-patchSimNet_params = createSimNet()
+# magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
 
-while(1):
-    ret, frame2 = cap.read()
-    if (not ret) or (f==len(gazeMatch)):
-        print('No frames grabbed!')
-        break
-    nxtFrame = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
-    nxtPatch = patchExtractor(nxtFrame, gazeMatch[f])
 
-    print(f)
-    if f < 3900:
-        f = f+1
-        continue
-    # magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
+# event, res = eventDetector(prvPatch, nxtPatch, np.sum(finalRes[-PATCH_PRIOR_STEPS:,0]),VOAnalyzer(f), gazeMatch[f-1], gazeMatch[f], patchSimNet_params, f)
 
-    # Pass the extracted knowledge to make the final desicion
+# compute patch similarites
 
-    event, res = eventDetector(prvPatch, nxtPatch, np.sum(finalRes[-PATCH_PRIOR_STEPS:,0]),VOAnalyzer(f), gazeMatch[f-1], gazeMatch[f], patchSimNet_params, f)
+if not path.exists(INP_DIR+'/res/patchDists.csv'): 
+    patchDists = patchNet_predAll(vidPath, gazeMatch)
+    np.savetxt(OUT_DIR+'patchDists.csv', patchDists, delimiter=',')
+else:
+    patchDists = np.loadtxt(OUT_DIR+'patchDists.csv', delimiter=',')
+# get distance of consequetive gaze locations
+gazeDists = np.linalg.norm(gazeMatch[:-1] - gazeMatch[1:], axis=1) #compute the gaze location change
 
-    print(event)
-    finalRes = np.append(finalRes, res, axis=0) #store all the responses
-    finalEvents = np.append(finalEvents, [event]) #store all the responses
-    #update the traversing freames
-    f = f+1
-    prvPatch = nxtPatch
-    prvFrame = nxtFrame
 
-    #knowledge panel visualization
-    if VISUALIZE:
-        if (min(nxtPatch.shape)>0):
-            visual.knowledgePanel_update(axs, nxtPatch, finalRes[:,1:])
-            plt.pause(0.0000001)
 
-        # Press Q on keyboard to  exit
-        if cv.waitKey(25) & 0xFF == ord('q'):
-            break
+# get environment changes
+envChanges = VOAnalyzer()
+envChanges = envChanges[frames]
+
+#concate features to create dataset
+patchDists = np.transpose(np.array(patchDists))
+gazeDists = np.transpose(np.array(gazeDists))
+envChanges = np.transpose(np.array(envChanges))
+
+
+featSet = np.column_stack((patchDists[:-1], gazeDists, envChanges[:-1]))
+
+#remove unlabeled samples
+lblSet = labels[:-1] #sample-based
+rmidcs = np.where(lblSet == 0)
+
+lblSet = np.delete(lblSet, rmidcs)
+featSet = np.delete(featSet, rmidcs,0)
+
+# remove blinks
+rmidcs = np.where(lblSet == 4)
+
+lblSet = np.delete(lblSet, rmidcs)
+featSet = np.delete(featSet, rmidcs,0)
+
+
+# plt.hist(lblSet, bins=np.arange(6))
+# plt.show()
+
+res, gts = NEED_train(featSet, lblSet)
+
+np.savetxt(OUT_DIR+'res.csv', res, delimiter=',')
+
+# us, iss = np.unique(labels, return_index=True)
+
+
+
+print(matches)
+# Pass the extracted knowledge to make the final desicion
+
+#knowledge panel visualization
+# if VISUALIZE:
+#     if (min(nxtPatch.shape)>0):
+#         visual.knowledgePanel_update(axs, nxtPatch, finalRes[:,1:])
+#         plt.pause(0.0000001)
+
+#     # Press Q on keyboard to  exit
+#     if cv.waitKey(25) & 0xFF == ord('q'):
+#         break
     
-finalEvents = finalEvents[1:]
-finalEvents = postprocess(finalEvents)
-cap.release()
-cv.destroyAllWindows()
+# finalEvents = postprocess(finalEvents)
+# cap.release()
+# cv.destroyAllWindows()
 
-f = open(OUT_DIR+'res.csv', 'w')
-writer = csv.writer(f)
-writer.writerow(finalEvents)
-f.close()
+# f = open(OUT_DIR+'res.csv', 'w')
+# writer = csv.writer(f)
+# writer.writerow(finalEvents)
+# f.close()
 
-np.savetxt(OUT_DIR+'gazeMatch.csv', gazeMatch, delimiter=',')
+# np.savetxt(OUT_DIR+'gazeMatch.csv', gazeMatch, delimiter=',')

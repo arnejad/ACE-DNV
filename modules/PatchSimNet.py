@@ -1,3 +1,4 @@
+import imp
 import os
 import sys
 import argparse
@@ -13,6 +14,10 @@ from sklearn import metrics
 from scipy import interpolate
 from torch.backends import cudnn
 from urllib3 import Retry
+import cv2 as cv
+from modules.patchExtractor import patchExtractor
+from scipy.spatial import distance
+from config import PATCH_SIZE, PATCH_PRIOR_STEPS, LAMBDA
 
 CUDA_ID = '0'
 model = '2ch2stream'
@@ -92,10 +97,56 @@ def create_network():
 
 
 def perdict(input, params):
-    
 
     y = model(torch.from_numpy(input).float().to(device), params)
 
     return y
 
 
+def pred_all(vidDir, gazes):
+    f = 1 #frame counter
+    cap = cv.VideoCapture(cv.samples.findFile(vidDir)) #prepare the target video
+    ret, frame1 = cap.read() #read a frame
+    prvFrame = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)   #color conversion to grayscale
+    # prvPatch = patchExtractor(prvFrame, gazes[0][1:])
+    prvPatch = patchExtractor(prvFrame, gazes[0])
+    patchSimNet_params = create_network()
+    dists = [0]
+    normDists = [0]
+    while(1):
+        ret, frame2 = cap.read()
+        if (not ret) or (f==len(gazes)):
+            print('Patch similarities computed successfully!')
+            break
+        nxtFrame = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+        nxtPatch = patchExtractor(nxtFrame, gazes[f])
+
+        inp = np.zeros((2, PATCH_SIZE, PATCH_SIZE))
+        if (prvPatch.shape[0] == 0) or (prvPatch.shape[1] == 0):
+            normDists = np.append(normDists, patchDistAvg)  #TODO handle fault
+            f = f+1
+            print(f)
+            prvPatch = nxtPatch
+            prvFrame = nxtFrame
+            continue
+        if (nxtPatch.shape[0] == 0) or (nxtPatch.shape[1] == 0):
+            normDists = np.append(normDists, patchDistAvg)
+            f = f+1
+            print(f)
+            prvPatch = nxtPatch
+            prvFrame = nxtFrame
+            continue
+
+        inp[0,:,:] = cv.resize(prvPatch, (64,64))
+        inp[1,:,:] = cv.resize(nxtPatch, (64,64))
+        patchDist = perdict(inp, patchSimNet_params)
+        dists = np.append(dists, patchDist.item())
+        pastPatchDist = np.sum(dists[-PATCH_PRIOR_STEPS:])
+        patchDistAvg = ((1-LAMBDA)*patchDist.item() + LAMBDA*(pastPatchDist/PATCH_PRIOR_STEPS))
+        normDists = np.append(normDists, patchDistAvg)
+        f = f+1
+        print(f)
+        prvPatch = nxtPatch
+        prvFrame = nxtFrame
+    
+    return normDists
