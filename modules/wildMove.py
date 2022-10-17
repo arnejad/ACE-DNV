@@ -1,4 +1,5 @@
 import cv2 as cv
+from matplotlib.pyplot import axis
 import numpy as np
 from modules.patchExtractor import patchExtractor
 
@@ -115,19 +116,22 @@ def OFAnalyzer(frameNum, gazeCoord1, gazeCoord2):
 
 
 
-def VOAnalyzer():
+def VOAnalyzer(returnDist=False):
     #TODO: connect DF-VO here
     #reading DFVO results for now
 
     visod = np.loadtxt(INP_DIR+"1/2/visOdom.txt", delimiter=' ')
     # orient_dist = cosine_similarity(visod[i, 4:7], visod[i-1, 4:7])
 
-
-    orient_dist = np.sum(np.abs(visod[:-1,4:7] - visod[1:, 4:7]), axis=1)
-
+    if returnDist:
+        # orients = np.sum(np.abs(visod[:-1,4:7] - visod[1:, 4:7]), axis=1)
+        # 2*atan2(norm({q1,q2,q3}),
+        orients = 2*np.arctan(np.linalg.norm(visod[:, 4:7], axis=1))
+    else:
+        orients = np.column_stack((visod[:-1,4:7], visod[1:, 4:7]))
 
     # orient_dist = np.linalg.norm(visod[i, 4:7])
-    return orient_dist
+    return orients
 
     
 

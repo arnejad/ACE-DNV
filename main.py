@@ -9,16 +9,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
 from scipy.spatial import distance
+from scipy import ndimage
 
 from modules.wildMove import VOAnalyzer
 from modules.timeMatcher import timeMatcher
 import modules.visualizer as visual
 from modules.PatchSimNet import pred_all as patchNet_predAll
-from NEED import train as NEED_train
+from NEED import train_nn as NEED_train
 from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES
+from modules.eventDetector import eventDetector as eventDetector
+
+########## DATA PREPARATION
 
 
-##### DATA PREPARATION
+def zScore_norm(featSet):
+    #normalize data (z-score) 
+    means = np.mean(featSet, axis=0)
+    std = np.std(featSet, axis=0)
+    featSet = (featSet-means)/std
+    mins = np.min(featSet, axis=0)
+    featSet = featSet+ np.abs(mins)
+    return featSet
+
 
 
 if DATASET == "VisioRUG":
@@ -131,15 +143,12 @@ elif DATASET == "GiW":
 
 
 
-
-
 ###### ANALYSIS
 
 
 # fig, axs = visual.knowledgePanel_init()    #initiallization of knowledge panel
 
 # magF, angF = opticalFlow(prvFrame, nxtFrame)  #calculating the optical flow in the whole environment
-
 
 # event, res = eventDetector(prvPatch, nxtPatch, np.sum(finalRes[-PATCH_PRIOR_STEPS:,0]),VOAnalyzer(f), gazeMatch[f-1], gazeMatch[f], patchSimNet_params, f)
 
@@ -150,41 +159,77 @@ if not path.exists(INP_DIR+'/res/patchDists.csv'):
     np.savetxt(OUT_DIR+'patchDists.csv', patchDists, delimiter=',')
 else:
     patchDists = np.loadtxt(OUT_DIR+'patchDists.csv', delimiter=',')
-# get distance of consequetive gaze locations
-gazeDists = np.linalg.norm(gazeMatch[:-1] - gazeMatch[1:], axis=1) #compute the gaze location change
 
+patchDists = np.transpose(np.array(patchDists))
+
+# get distance of consequetive gaze locations
+# gazeDists = np.linalg.norm(gazeMatch[:-1] - gazeMatch[1:], axis=1) #compute the gaze location change
+gazes = np.column_stack((gazeMatch[:-1], gazeMatch[1:]))
 
 
 # get environment changes
-envChanges = VOAnalyzer()
+envChanges = VOAnalyzer(returnDist=True)
 envChanges = envChanges[frames]
-
+# envChanges = (envChanges - np.min(envChanges)) / (np.max(envChanges) - np.min(envChanges))
+# envChanges = envChanges*10
+# envChanges = (envChanges - np.min(envChanges))/np.ptp(envChanges)
+envChanges = zScore_norm(envChanges)
+# envChanges = ndimage.median_filter(envChanges, size=20)
 #concate features to create dataset
-patchDists = np.transpose(np.array(patchDists))
-gazeDists = np.transpose(np.array(gazeDists))
-envChanges = np.transpose(np.array(envChanges))
 
-
-featSet = np.column_stack((patchDists[:-1], gazeDists, envChanges[:-1]))
+# gazes = np.transpose(np.array(gazes))
+# envChanges = np.transpose(np.array(envChanges))
 
 #remove unlabeled samples
 lblSet = labels[:-1] #sample-based
-rmidcs = np.where(lblSet == 0)
+rmidcs_nans = np.where(lblSet == 0)
 
-lblSet = np.delete(lblSet, rmidcs)
-featSet = np.delete(featSet, rmidcs,0)
 
 # remove blinks
-rmidcs = np.where(lblSet == 4)
+rmidcs_blinks = np.where(lblSet == 4)
 
-lblSet = np.delete(lblSet, rmidcs)
-featSet = np.delete(featSet, rmidcs,0)
+rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
+
+################### ML method feature creation
+
+# featSet = np.column_stack((patchDists[:-1], gazes, envChanges[:-1,:]))
+
+
+
+# lblSet = np.delete(lblSet, rmidcs_nans)
+# featSet = np.delete(featSet, rmidcs_nans,0)
+
+
+# lblSet = np.delete(lblSet, rmidcs_nans)
+# featSet = np.delete(featSet, rmidcs_nans,0)
 
 
 # plt.hist(lblSet, bins=np.arange(6))
 # plt.show()
 
-res, gts = NEED_train(featSet, lblSet)
+# res, gts = NEED_train(featSet, lblSet)
+
+
+####################### Rule-based
+
+gazeMatch = gazeMatch + np.abs(np.min(gazeMatch, axis=0))
+gazeDists = np.linalg.norm(gazeMatch[:-1] - gazeMatch[1:], axis=1) #compute the gaze location change
+gazeDists = ndimage.median_filter(gazeDists, size=10)
+
+lblSet = np.delete(lblSet, rmidcs)
+gazeDists = np.delete(gazeDists, rmidcs)
+patchDists = np.delete(patchDists, rmidcs)
+envChanges = np.delete(envChanges, rmidcs)
+
+
+# visual.knowledgePanel_update(axs, None, np.column_stack((patchDists[:-1], gazeDists, envChanges[:-1])))
+# fig.show()
+
+
+res = eventDetector(patchDists, gazeDists,envChanges, lblSet)
+
+matches = len(np.where(res == np.transpose(lblSet)[0])[0])
+print(matches/len(lblSet))
 
 np.savetxt(OUT_DIR+'res.csv', res, delimiter=',')
 

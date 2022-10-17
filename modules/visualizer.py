@@ -15,14 +15,14 @@ def knowledgePanel_update(axs, nxtPatch, finalRes):
     axs[1].clear()
     axs[2].clear()
     axs[3].clear()
-    axs[0].set_title('patch dist')
+    axs[0].set_title('patch sim')
     axs[1].set_title('gaze distance')
     axs[2].set_title('env change')
     axs[3].set_title('gaze patch')
     axs[0].plot(finalRes[:,0])
     axs[1].plot(finalRes[:,1])
     axs[2].plot(finalRes[:,2])
-    axs[3].imshow(nxtPatch)
+    # axs[3].imshow(nxtPatch)
     
 
 # Saves a png file for changes in gaze coordinats

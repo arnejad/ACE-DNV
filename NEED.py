@@ -2,9 +2,8 @@ from unittest.mock import patch
 import numpy as np
 import sklearn
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report
-import matplotlib.pyplot as plt
-from sklearn.utils import resample
+from modules.decisionMaker import train_nn as trainDm_nn
+
 import random
 
 def balance (x, y):
@@ -12,7 +11,7 @@ def balance (x, y):
     oneIndcs = np.where(y==1)
     oneIndcs = oneIndcs[0]
     numOnes = len(oneIndcs)
-    ix = np.random.choice(len(zerIndcs[0]), size=numOnes, replace=False)
+    ix = np.random.choice(len(zerIndcs[0]), size=numOnes, replace=True)
     
     chosenZeros = zerIndcs[0][ix]
     np.random.shuffle(chosenZeros)
@@ -23,22 +22,26 @@ def balance (x, y):
     return feats, lbls
 
 
-def train(featSet, lblSet):
-    print("training initiated")
-    
 
+def zScore_norm(featSet):
     #normalize data (z-score) 
     means = np.mean(featSet, axis=0)
     std = np.std(featSet, axis=0)
     featSet = (featSet-means)/std
     mins = np.min(featSet, axis=0)
     featSet = featSet+ np.abs(mins)
+    return featSet
 
+def train_logreg(featSet, lblSet):
+    print("training initiated")
     
 
+    #normalize data (z-score) 
+    featSet = zScore_norm(featSet)
 
-    lblSet[lblSet != 3] = 0
-    lblSet[lblSet == 3] = 1
+
+    lblSet[lblSet != 1] = 0
+    lblSet[lblSet == 1] = 1
 
     featSet, lblSet = balance(featSet, lblSet)
 
@@ -60,10 +63,20 @@ def train(featSet, lblSet):
     matches = len(np.where(preds == np.transpose(testLbl)[0])[0])
     print(matches/len(testLbl))
 
-    lblsNotFive = testLbl[np.where(testLbl != 1)]
-    predsNotFive = preds[np.where(testLbl != 1)]
-    matches = len(np.where(predsNotFive == lblsNotFive)[0])
-    print(matches/len(lblsNotFive))
+    # lblsNotFive = testLbl[np.where(testLbl != 1)]
+    # predsNotFive = preds[np.where(testLbl != 1)]
+    # matches = len(np.where(predsNotFive == lblsNotFive)[0])
+    # print(matches/len(lblsNotFive))
 
     return preds, testLbl
+
+def train_nn(featSet, lblSet):
+
+    print("training initiated")
+
+    featSet = zScore_norm(featSet)
+    trainDm_nn(featSet, lblSet)
+
+
+
 
