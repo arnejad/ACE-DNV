@@ -2,10 +2,12 @@
 DATASET = "GiW"
 # INP_DIR = '/home/ashdev/samples/004'      # the input directory containing the video and gaze signal
 INP_DIR = '/home/ashdev/data/GiW/'
-ACTIVITY_NUM = 2            # only for gaze-in-the-wild dataset
+ACTIVITY_NUM = 1            # only for gaze-in-the-wild dataset
 ACIVITY_NAMES = ["Indoor_Walk", "Ball_Catch", "Tea_Making", "Visual_Search"]
 OUT_DIR = INP_DIR+'res/'
 CLOUD_FORMAT = False        #Set to to True if the data has been uploaded to cloud and downloaded (for Pupil devices)
+
+START_FRAME = 9001
 
 # REPRESENTAION
 VISUALIZE = True           #Set to True if live ploting of knowledge is wanted. Be aware that it increases execution time significantly.

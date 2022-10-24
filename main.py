@@ -15,9 +15,10 @@ from modules.wildMove import VOAnalyzer
 from modules.timeMatcher import timeMatcher
 import modules.visualizer as visual
 from modules.PatchSimNet import pred_all as patchNet_predAll
-from NEED import train_nn as NEED_train
-from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES
+from NEED import train as NEED_train
+from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES, START_FRAME
 from modules.eventDetector import eventDetector as eventDetector
+from modules.decisionMaker import execute as run_need
 
 ########## DATA PREPARATION
 
@@ -111,33 +112,70 @@ elif DATASET == "GiW":
     # participants = [s for s in subFiles if path.exists(s)]
 
     for p in range(len(participants)):  #change into read all samples TODO
-        vidPath = INP_DIR + participants[p] + '/' + str(ACTIVITY_NUM) + '/world.mp4'
-        activityName = ACIVITY_NAMES[ACTIVITY_NUM-1]
-        processData = mat = scipy.io.loadmat(INP_DIR + '/Extracted_Data/' + activityName + '/ProcessData_cleaned/' + \
-        'PrIdx_'+participants[p]+'_TrIdx_' + str(ACTIVITY_NUM) + '.mat')
 
-        labels = mat = scipy.io.loadmat(INP_DIR + '/Extracted_Data/' + activityName + '/Labels/' + \
+        # video path
+        vidPath = INP_DIR + participants[p] + '/' + str(ACTIVITY_NUM) + '/world.mp4'
+
+        # find the activity name
+        activityName = ACIVITY_NAMES[ACTIVITY_NUM-1]
+
+        # load the data
+        processData = scipy.io.loadmat(INP_DIR + '/Extracted_Data/' + activityName + '/ProcessData_cleaned/' + \
+        'PrIdx_'+participants[p]+'_TrIdx_' + str(ACTIVITY_NUM) + '.mat')
+        
+        # load the labels
+        labels = scipy.io.loadmat(INP_DIR + '/Extracted_Data/' + activityName + '/Labels/' + \
         'PrIdx_'+participants[p]+'_TrIdx_' + str(ACTIVITY_NUM) + '_Lbr_1.mat')
 
         labels = np.array(labels['LabelData']['Labels'][0])
         
+        frames = processData['ProcessData']['ETG'][0,0][0,0][5][0]
+        
 
-        gazes = np.array(processData['ProcessData']['ETG'][0,0][0,0][8] * processData['ProcessData']['ETG'][0,0][0,0][0])
+        # finding the indices that match with frames
+        frames, indcs = np.unique(frames, return_index=True)
 
-        frames = processData['ProcessData']['ETG'][0,0][0,0][5]
-
-        # matching gazes with frames by finding unique values
-        u, indcs = np.unique(np.array(processData['ProcessData']['ETG'][0,0][0,0][5]), return_index=True)
        
 
+
+        # take the gazes out
+        gazes = np.array(processData['ProcessData']['ETG'][0,0][0,0][8] * processData['ProcessData']['ETG'][0,0][0,0][0])
+        
+        # load the environment
+        # envChanges = VOAnalyzer(returnDist=False)
+        visod = np.loadtxt(INP_DIR+"1/1/visOdom.txt", delimiter=' ')
+        envChanges = visod[:,5]
+
+        
+        # if not all envChanges were computed we trim until where available
+        rm_indcs = np.where(frames >= len(envChanges)+START_FRAME)
+        indcs = np.delete(indcs, rm_indcs[0])
+        frames = np.delete(frames, rm_indcs[0])
+        
+        # if we started from a specific frame remove the previous ones
+        rm_indcs = np.where(frames < START_FRAME)
+        indcs = np.delete(indcs, rm_indcs)
+        frames = np.delete(frames, rm_indcs)
+        # frames = frames - START_FRAME
+
+        # match the gazes that fall into frames
         gazeMatch = gazes[indcs]
+
+        # keep the labels that correspond to a frame
         labels = labels[0][indcs]
-        frames = frames[0][indcs]
         labels = np.squeeze(labels)
+        
+        # frames = frames[indcs]
+
+        
+
+        
+
+        envChanges = envChanges[frames[:-1]-(START_FRAME-1)]
+
+        # find the start and the end frame
         startFrame = np.amax(np.array(processData['ProcessData']['ETG'][0,0][0,0][5]))
         endFrame = np.amax(np.array(processData['ProcessData']['ETG'][0,0][0,0][5]))
-
-        # envMotion = VOAnalyzer(imuMatch)
 
         print("Data successfully loaded")
 
@@ -155,7 +193,7 @@ elif DATASET == "GiW":
 # compute patch similarites
 
 if not path.exists(INP_DIR+'/res/patchDists.csv'): 
-    patchDists = patchNet_predAll(vidPath, gazeMatch)
+    patchDists = patchNet_predAll(vidPath, gazeMatch, frames)
     np.savetxt(OUT_DIR+'patchDists.csv', patchDists, delimiter=',')
 else:
     patchDists = np.loadtxt(OUT_DIR+'patchDists.csv', delimiter=',')
@@ -168,20 +206,9 @@ gazes = np.column_stack((gazeMatch[:-1], gazeMatch[1:]))
 
 
 # get environment changes
-envChanges = VOAnalyzer(returnDist=True)
-envChanges = envChanges[frames]
-# envChanges = (envChanges - np.min(envChanges)) / (np.max(envChanges) - np.min(envChanges))
-# envChanges = envChanges*10
-# envChanges = (envChanges - np.min(envChanges))/np.ptp(envChanges)
-envChanges = zScore_norm(envChanges)
-# envChanges = ndimage.median_filter(envChanges, size=20)
-#concate features to create dataset
 
-# gazes = np.transpose(np.array(gazes))
-# envChanges = np.transpose(np.array(envChanges))
+lblSet = labels #sample-based
 
-#remove unlabeled samples
-lblSet = labels[:-1] #sample-based
 rmidcs_nans = np.where(lblSet == 0)
 
 
@@ -193,21 +220,30 @@ rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
 ################### ML method feature creation
 
 # featSet = np.column_stack((patchDists[:-1], gazes, envChanges[:-1,:]))
+featSet = np.column_stack((patchDists, gazeMatch[:-1,:], envChanges))
+
+lblSet = np.delete(lblSet, rmidcs)
+featSet = np.delete(featSet, rmidcs,0)
+frames = np.delete(frames, rmidcs)
+
+np.savetxt(OUT_DIR+'feats.csv', featSet, delimiter=',')
+np.savetxt(OUT_DIR+'lbls.csv', featSet, delimiter=',')
+np.savetxt(OUT_DIR+'frames.csv', frames, delimiter=',')
 
 
+# rmidcs_sac = np.where(lblSet == 3)
 
-# lblSet = np.delete(lblSet, rmidcs_nans)
-# featSet = np.delete(featSet, rmidcs_nans,0)
+# lblSet = np.delete(lblSet, rmidcs_sac)
+# featSet = np.delete(featSet, rmidcs_sac,0)
 
-
-# lblSet = np.delete(lblSet, rmidcs_nans)
-# featSet = np.delete(featSet, rmidcs_nans,0)
 
 
 # plt.hist(lblSet, bins=np.arange(6))
 # plt.show()
+res = run_need(featSet, lblSet)
 
-# res, gts = NEED_train(featSet, lblSet)
+
+res, gts = NEED_train(featSet, lblSet)
 
 
 ####################### Rule-based

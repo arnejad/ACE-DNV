@@ -2,7 +2,9 @@ from unittest.mock import patch
 import numpy as np
 import sklearn
 from sklearn.linear_model import LogisticRegression
-from modules.decisionMaker import train_nn as trainDm_nn
+# from modules.decisionMaker import train_LSTM as train_LSTM
+# from modules.decisionMaker import train_nn as train_nn
+
 
 import random
 
@@ -70,13 +72,13 @@ def train_logreg(featSet, lblSet):
 
     return preds, testLbl
 
-def train_nn(featSet, lblSet):
+def train(featSet, lblSet):
 
     print("training initiated")
 
-    featSet = zScore_norm(featSet)
-    trainDm_nn(featSet, lblSet)
-
+    # featSet = zScore_norm(featSet)
+    # trainDm_nn(featSet, lblSet)
+    execute(featSet, lblSet)
 
 
 

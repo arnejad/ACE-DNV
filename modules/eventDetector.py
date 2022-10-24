@@ -37,8 +37,8 @@ def  eventDetector(patchSim, gazeDists, orientChange, lbls):
         
         decision = 0
         # final decision
-        # visual.knowledgePanel_update(axs, None, np.column_stack((patchSim[:i+1], gazeDists[:i+1], orientChange[:i+1])))
-        # plt.pause(0.0000001)
+        visual.knowledgePanel_update(axs, None, np.column_stack((patchSim[:i+1], gazeDists[:i+1], orientChange[:i+1])))
+        plt.pause(0.0000001)
         
         if patchSimAvg < PATCH_SIM_THRESH:
             if gazeDist > GAZE_DIST_THRESH:
