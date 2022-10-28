@@ -161,8 +161,8 @@ def pred_all(vidDir, gazes, target_frames):
             prvPatch = nxtPatch
             prvFrame = nxtFrame
             continue
-        else:
-            cv.imshow('grayscale image', prvPatch)
+        # else:
+        #     cv.imshow('grayscale image', prvPatch)
 
             
         inp[0,:,:] = cv.resize(prvPatch, (64,64))

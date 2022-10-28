@@ -2,6 +2,7 @@ from unittest.mock import patch
 import numpy as np
 import sklearn
 from sklearn.linear_model import LogisticRegression
+from modules.decisionMaker import execute
 # from modules.decisionMaker import train_LSTM as train_LSTM
 # from modules.decisionMaker import train_nn as train_nn
 
