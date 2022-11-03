@@ -250,6 +250,8 @@ elif DATASET == "GiW":
 
 # eventDetector(ds_x, ds_y)
 
+ds_x = np.array(ds_x, dtype=object); ds_y = np.array(ds_y, dtype=object)
+
 run_need(ds_x, ds_y)
 
 

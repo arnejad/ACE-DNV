@@ -152,7 +152,7 @@ def batchMaker_new(X, Y, batch_size, timesteps, train):
     timeseries = []
     lbls_all = []
     
-    
+    # X = np.array(X, dtype=object); Y = np.array(Y, dtype=object)
     for db in range(len(X)):
         
         serie_X = np.array([X[db][i-int(timesteps/2):i+(int(timesteps/2)+1),:] for i in range(int(timesteps/2),len(X[db])-int((timesteps/2)))])
@@ -160,7 +160,8 @@ def batchMaker_new(X, Y, batch_size, timesteps, train):
         timeseries.append(serie_X)
         lbls_all.append(lbls)
 
-    timeseries = np.squeeze(timeseries); Y = np.squeeze(lbls_all)
+    timeseries = np.squeeze(np.array(timeseries, dtype=object)) 
+    Y = np.squeeze(np.array(lbls_all, dtype=object))
 
 
     if train:
@@ -178,6 +179,8 @@ def batchMaker_new(X, Y, batch_size, timesteps, train):
         b_X = timeseries[start-1:end-1]
         b_Y = Y[start-1:end-1]
 
+        b_X = np.array(b_X, dtype=np.float64)
+        b_Y = np.array(b_Y, dtype=np.int8)
         batch_X = torch.from_numpy(b_X).float()
         batch_Y = torch.from_numpy(b_Y).long()
         if torch.cuda.is_available():
@@ -241,6 +244,7 @@ def execute(x, y):
                           features, lstm_layers=2, bidirectional=True)
 
     model.cuda()
+
 
     valid_x, valid_y = x[7], y[7]
     x, y = np.delete(x,7), np.delete(y,7)
