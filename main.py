@@ -17,7 +17,7 @@ import modules.visualizer as visual
 from modules.PatchSimNet import pred_all as patchNet_predAll
 from NEED import train as NEED_train
 from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES, LABELER
-from modules.eventDetector import eventDetector as eventDetector
+from modules.eventDetector import eventDetector_new as eventDetector
 from modules.decisionMaker import execute as run_need
 from modules.preprocess import preprocessor
 
@@ -118,11 +118,11 @@ elif DATASET == "GiW":
 
     # participants = [s for s in subFiles if path.exists(s)]
 
-    trainset_x = []
-    trainset_y = []
+    ds_x = []
+    ds_y = []
 
-    # for p in range(len(participants)):  #change into read all samples TODO
-    for p in range(4):
+    for p in range(len(participants)):  #change into read all samples TODO
+    # for p in range(2):
 
         # video path
         vidPath = INP_DIR + participants[p] + '/' + str(ACTIVITY_NUM) + '/world.mp4'
@@ -169,14 +169,14 @@ elif DATASET == "GiW":
         rm_indcs = np.where(frames >= len(envChanges)+startFrame)
         indcs = np.delete(indcs, rm_indcs[0])
         frames = np.delete(frames, rm_indcs[0])
-        gazeEndTrimmer = np.min(rm_indcs)
+        # gazeEndTrimmer = np.min(rm_indcs)
 
 
         # if we started from a specific frame remove the previous ones
         rm_indcs = np.where(frames < startFrame)
         indcs = np.delete(indcs, rm_indcs[0])
         frames = np.delete(frames, rm_indcs[0])
-        gazeStartTrimmer = np.max(rm_indcs[0])
+        # gazeStartTrimmer = np.max(rm_indcs[0])
 
         
         # match the gazes that fall into frames
@@ -216,16 +216,22 @@ elif DATASET == "GiW":
 
         feats,lbls = preprocessor(gazes, patchDists, envChanges, T, TMatch, labels, lblMatch)
 
-        # if p == 0:
-        #     trainset_x = [feats]
-        #     trainset_y = [lbls]
-        # else:
-        #     trainset_x = np.append(trainset_x, [feats], axis=2)
-        #     trainset_y = np.append(trainset_y, [lbls], axis=1)
+        #temp delete gaze followings
+        rmInd = np.where(lbls==3)[0]
 
-        trainset_x.append(feats)
-        trainset_y.append(lbls)
+        lbls = np.delete(lbls, rmInd[6000:])
+        feats = np.delete(feats, rmInd[6000:], axis=0)
 
+        print("number of fixations " + str(len(np.where(lbls==0)[0])) + ", saccades " + str(len(np.where(lbls==2)[0])) + ", gazeP " + str(len(np.where(lbls==1)[0])) + ", gazeF " + str(len(np.where(lbls==3)[0])))
+        
+
+        
+        ds_x.append(feats)
+        ds_y.append(lbls)
+
+        # np.savetxt(OUT_DIR+'feats.csv', feats, delimiter=',')
+        # np.savetxt(OUT_DIR+'lbls.csv', lbls, delimiter=',')
+        # np.savetxt(OUT_DIR+'frames.csv', frames, delimiter=',')
         print("Data successfully loaded for participant " + str(participants[p]))
 
 
@@ -242,7 +248,9 @@ elif DATASET == "GiW":
 
 # feats,lbls = preprocessor(gazes, patchDists, envChanges, T, TMatch, labels, lblMatch)
 
-run_need(feats, lbls)
+# eventDetector(ds_x, ds_y)
+
+run_need(ds_x, ds_y)
 
 
 # get environment changes

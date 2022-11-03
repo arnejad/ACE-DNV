@@ -2,6 +2,11 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import numpy as np
+import random
+from sklearn.utils import class_weight
+from sklearn import utils
+
+
 
 from config import ET_FREQ
 
@@ -25,7 +30,7 @@ class CNN_LSTM(nn.Module):
             conv_layers += [nn.Conv1d(input_conv, conv_filters[i], kernel_size,
                                       padding=padding, padding_mode='replicate')]
             conv_layers += [nn.BatchNorm1d(conv_filters[i])]
-            conv_layers += [nn.ReLU()]        
+            conv_layers += [nn.LeakyReLU()]        
         self.conv_layers = nn.Sequential(*conv_layers)
         self.flatten = TimeDistributed(nn.Flatten(), batch_first=True)
         hidden_state = 32
@@ -75,7 +80,8 @@ def train(model, optimizer, x, y):
     model.train()
     optimizer.zero_grad()
     output = model(x)
-    loss = F.nll_loss(output, y)
+    # loss = F.nll_loss(output, y, weight= torch.tensor([1,0,1,0.15]).cuda(),reduction='mean')
+    loss = F.nll_loss(output, y,reduction='mean')
     loss.backward()
     optimizer.step()
     return loss.item()
@@ -85,7 +91,7 @@ def test(model, x, y):
     model.eval()
     with torch.no_grad():
         output = model(x)
-        loss = F.nll_loss(output, y, reduction='sum').item()
+        loss = F.nll_loss(output, y, reduction='sum', ).item()
         pred = output.data.max(1, keepdim=True)[1]
         preds = pred.view(pred.numel())
         return preds, y, loss
@@ -112,56 +118,159 @@ def create_batches(X, Y, start, end, timesteps, randomize=False):
         return batch_X, batch_Y
 
 
+def batchMaker(X, Y, batch_size, timesteps, randomize=False):
+    timeseries = []
+    all_batches_X = []
+    all_batches_Y = []
+    
+    for db in range(len(X)):
+        B = int(len(X[db])/batch_size) # number of batches to be extracted from each dataframe
+        for b in range(1, B-1):
+            start, end = b * batch_size, (b+1) * batch_size
+            b_Y = Y[db][start-1:end-1]
+
+            b_X = np.array([X[db][i-timesteps:i,:] for i in range(start, end)])
+            # timeseries.append(b_X)
+            if randomize:
+                shuffler = np.random.permutation(len(b_Y))
+                b_X = b_X[shuffler]
+                b_Y = b_Y[shuffler]
+            batch_X = torch.from_numpy(b_X).float()
+            batch_Y = torch.from_numpy(b_Y).long()
+            if torch.cuda.is_available():
+                batch_X = batch_X.cuda()
+                batch_Y = batch_Y.cuda()
+            all_batches_X.append(batch_X)
+            all_batches_Y.append(batch_Y)
+
+    return all_batches_X, all_batches_Y
+
+def batchMaker_new(X, Y, batch_size, timesteps, train):
+    # this batchmaker shuffles all the data (not innter-batch) and has a window not for [i-timestep, i]
+    # but [i-(timestep/2), i+(timestep/2)]
+
+    timeseries = []
+    lbls_all = []
+    
+    
+    for db in range(len(X)):
+        
+        serie_X = np.array([X[db][i-int(timesteps/2):i+(int(timesteps/2)+1),:] for i in range(int(timesteps/2),len(X[db])-int((timesteps/2)))])
+        lbls = Y[db][int(timesteps/2):len(X[db])-int(timesteps/2)]
+        timeseries.append(serie_X)
+        lbls_all.append(lbls)
+
+    timeseries = np.squeeze(timeseries); Y = np.squeeze(lbls_all)
+
+
+    if train:
+        timeseries = np.concatenate(timeseries); Y = np.concatenate(Y)
+
+    timeseries, Y = utils.shuffle(timeseries, Y)
+
+
+    all_batches_X = []
+    all_batches_Y = []
+
+    B = int(len(timeseries)/batch_size) # number of batches to be extracted from each dataframe
+    for b in range(1, B-1):
+        start, end = b * batch_size, (b+1) * batch_size
+        b_X = timeseries[start-1:end-1]
+        b_Y = Y[start-1:end-1]
+
+        batch_X = torch.from_numpy(b_X).float()
+        batch_Y = torch.from_numpy(b_Y).long()
+        if torch.cuda.is_available():
+            batch_X = batch_X.cuda()
+            batch_Y = batch_Y.cuda()
+        all_batches_X.append(batch_X)
+        all_batches_Y.append(batch_Y)
+
+    return all_batches_X, all_batches_Y
+
+def f1_score(preds, labels, class_id):
+    '''
+    preds: precictions made by the network
+    labels: list of expected targets
+    class_id: corresponding id of the class
+    '''
+    true_count = torch.eq(labels, class_id).sum()
+    true_positive = torch.logical_and(torch.eq(labels, preds),
+                                      torch.eq(labels, class_id)).sum().float()
+    precision = torch.div(true_positive, torch.eq(preds, class_id).sum().float())
+    precision = torch.where(torch.isnan(precision),
+                            torch.zeros_like(precision).type_as(true_positive),
+                            precision)
+    recall = torch.div(true_positive, true_count)
+    f1 = 2*precision*recall / (precision+recall)
+    f1 = torch.where(torch.isnan(f1), torch.zeros_like(f1).type_as(true_positive),f1)
+    return f1.item()
+
+
+def print_scores(total_pred, total_label, test_loss, name):
+    f1_fix = f1_score(total_pred, total_label, 0)*100
+    f1_gazeP = f1_score(total_pred, total_label, 1)*100
+    f1_sacc = f1_score(total_pred, total_label, 2)*100
+    f1_gazeF = f1_score(total_pred, total_label, 3)*100
+    f1_avg = (f1_fix + f1_sacc + f1_gazeP + f1_gazeF)/4
+    print('\n{} set: Average loss: {:.4f}, F1_FIX: {:.2f}%, F1_SACC: {:.2f}%, F1_GazePursuit: {:.2f}%, F1_GazeFollowing: {:.2f}%, AVG: {:.2f}%\n'.format(
+        name, test_loss, f1_fix, f1_sacc, f1_gazeP, f1_gazeF, f1_avg
+    ))
+    return (f1_fix + f1_sacc + f1_gazeP + f1_gazeF)/4
 
 
 def execute(x, y):
     
 
 
-    learning_rate = 0.01
+    learning_rate = 0.0001
     timesteps = 25
     n_classes = 4
     kernel_size = 5
     dropout = 0.25
-    features = 18
-    epochs = 25
+    features = 5
+    epochs = 80
     num_batches = 587
-    batch_size = 2048
+    batch_size = 1024
     rand = True
-    train_size = len(x)
 
+
+    # classW = class_weight.compute_class_weight(class_weight='balanced', classes = [0,2,3], y = np.hstack(y))
+    
     model = CNN_LSTM(timesteps, n_classes, kernel_size, dropout,
                           features, lstm_layers=2, bidirectional=True)
 
     model.cuda()
 
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
+    valid_x, valid_y = x[7], y[7]
+    x, y = np.delete(x,7), np.delete(y,7)
 
+    valid_batches_x, valid_batches_y = batchMaker_new([valid_x], [valid_y], batch_size, timesteps, train=False)
+
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
+    scores = []
     steps = 0
     for epoch in range(1, epochs+1):
         cost = 0
-        for k in range(10):
-            start, end = k * batch_size, (k+1) * batch_size
-            if start == 0:
-                start = timesteps
-            trainX, trainY = create_batches(x, y, start, end, timesteps, rand) 
-            cost += train(model, optimizer, trainX, trainY)
+        
+        trainBatches_X, trainBatches_Y = batchMaker_new(x,y, batch_size, timesteps, train=True)
+
+        for k in range(len(trainBatches_Y)):
+            cost += train(model, optimizer, trainBatches_X[k], trainBatches_Y[k])
             steps += 1
             # if k > 0 and (k % (num_batches//10) == 0 or k == num_batches-1):
             if True:
-                print('Train Epoch: {:2} [{}/{} ({:.0f}%)]  Loss: {:.5f}  Steps: {}'.format(
-                    epoch, end, train_size,
+                print('Train Epoch: {:2} [({:.0f}%)]  Loss: {:.5f}  Steps: {}'.format(
+                    epoch,
                     100*k/num_batches, cost/num_batches, steps 
                 ), end='\r')
-            
-        preds, labels, loss = test(model, trainX, trainY)
+        
+        # choose a random batch for validation
+        
+        
+        # preds, labels, t_loss = test(model, trainBatches_X[k], trainBatches_Y[k])
+        k = random.randint(0, len(valid_batches_y)-1)
+        preds, labels, t_loss = test(model, valid_batches_x[k], valid_batches_y[k])
+        score = print_scores(preds, labels, t_loss, 'Val.')
+        scores.append(score)
 
-
-
-    for epoch in range(1, epochs+1):
-        cost = 0
-        cost += train(model, optimizer, x, y)
-
-        preds, labels, loss = test(model, x, y)
-
-        print("check now")

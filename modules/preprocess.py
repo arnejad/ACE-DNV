@@ -24,10 +24,11 @@ def gazeFeatureExtractor(gaze, labels):
         latency = 1000/ET_FREQ #in ms
         x = gaze[:,0]
         y = gaze[:,1]
-        gaze_feats = extract_features(x,y, window, latency, length, labels)
-        return gaze_feats
+        # gaze_feats = extract_gaze_features(x,y, window, latency, length, labels)
+        gaze_feats, lbls = extract_gaze_features_single(x,y, labels)
+        return gaze_feats, lbls
 
-def extract_features(x,y, windows, latency, length, targets):
+def extract_gaze_features(x,y, windows, latency, length, targets):
     '''
     Creates a training and a target tensor based on the number of
     windows, the latency offset, number of targets, and gaze coordinates
@@ -52,6 +53,76 @@ def extract_features(x,y, windows, latency, length, targets):
         tgt_tensor[i-ini] = targets[i+offset]
     return tr_tensor, tgt_tensor
 
+def extract_gaze_features_single(x,y, targets):
+    '''
+    Creates a training and a target tensor based on the number of
+    windows, the latency offset, number of targets, and gaze coordinates
+    '''
+    latency = 1000/ET_FREQ #in ms
+    offset = 0
+    ini = 0
+    tr_tensor  = np.zeros((len(x)-ini, 2)) #num X sets of features
+    tgt_tensor = np.zeros(len(targets)-ini,)
+    for i in range(ini, len(x)-1):
+        diff_x = x[i] - x[i+1]
+        diff_y = y[i] - y[i+1]
+        ampl   = np.math.sqrt(diff_x**2 + diff_y**2)
+        time   = ((1)*latency)/1000
+        #saving speed
+        tr_tensor[i-ini][0] = ampl/time
+        #saving direction % window
+        tr_tensor[i][1] = np.math.atan2(diff_y, diff_x)
+    tgt_tensor = targets
+    return tr_tensor, tgt_tensor
+
+def extract_head_features(x):
+    '''
+    Creates a training and a target tensor based on the number of
+    windows, the latency offset, number of targets, and gaze coordinates
+    '''
+    latency = 1000/ET_FREQ #in ms
+    length = 1
+    stride = 9
+    strides = [2**val for val in range(stride)]
+    fac = (ET_FREQ * length)/strides[-1]
+    windows = [int(np.ceil(i*fac)) for i in strides]
+    offset = 0
+    ini = int(np.ceil(ET_FREQ * length))
+    tr_tensor  = np.zeros((len(x)-ini, 2*len(windows))) #num X sets of features
+    for i in range(ini, len(x)):
+        for j in range(len(windows)):
+            start_pos, end_pos = get_start_end(i,windows[j])
+            if start_pos == end_pos:
+                continue
+            diff_x = x[end_pos] - x[start_pos]
+            ampl   = np.math.sqrt(diff_x**2)
+            time   = ((end_pos - start_pos)*latency)/1000
+            #saving speed
+            tr_tensor[i-ini][j] = ampl/time
+            #saving direction % window
+            tr_tensor[i-ini][j+len(windows)] = np.math.atan(diff_x)
+    return tr_tensor
+
+def extract_head_features_single(x):
+    '''
+    Creates a training and a target tensor based on the number of
+    windows, the latency offset, number of targets, and gaze coordinates
+    '''
+
+    latency = 1000/ET_FREQ #in ms
+    ini = 0
+    tr_tensor  = np.zeros((len(x)-ini, 2)) #num X sets of features
+
+    for i in range(ini, len(x)-1):
+        diff_x = x[i] - x[i+1]
+        ampl   = np.math.sqrt(diff_x**2)
+        time   = ((1)*latency)/1000
+        #saving speed
+        tr_tensor[i-ini][0] = ampl/time
+        #saving direction % window
+        tr_tensor[i][1] = np.math.atan(diff_x)
+    return tr_tensor
+
 def get_start_end( i, step):
     '''
     i -> the most recent position
@@ -69,14 +140,14 @@ def interpolate(signal, current_t, target_t):
     f = interp1d(current_t, signal, kind='cubic')
 
     # extract the target timepoints 
-    ynew1 = f(target_t)
+    ynew = f(target_t)
 
-    return
+    return ynew
 
 
 def preprocessor(gaze, patchSim, headRot, gaze_t, frame_t, labels, lblMatch):
 
-
+    
     # remove blinks and unlabled data #TODO remove also neighboring events
 
     rmidcs_nans = np.where(labels == 0)
@@ -90,16 +161,29 @@ def preprocessor(gaze, patchSim, headRot, gaze_t, frame_t, labels, lblMatch):
     rmidcs_nans = np.where(lblMatch == 0)
     rmidcs_blinks = np.where(lblMatch == 4) # remove blinks
     rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
-    
     frame_t = np.delete(frame_t, rmidcs)
-    
+    # patchSim = np.delete(patchSim, rmidcs)
+    # headRot = np.delete(headRot, rmidcs)
+
+
     if len(lblMatch)-1 in rmidcs :
-        patchSim = np.delete(patchSim, rmidcs[:-1])
-        headRot =  np.delete(headRot, rmidcs[:-1])
+        rmidcs = np.delete(rmidcs[0], np.where(rmidcs==(len(lblMatch)-1))[1])
+        patchSim = np.delete(patchSim, rmidcs)
+        headRot =  np.delete(headRot, rmidcs)
+        patchSim = patchSim[:-1]
+        headRot = headRot[:-1]
     else:
         patchSim = np.delete(patchSim, rmidcs)
         headRot =  np.delete(headRot, rmidcs)
-    
+
+    betweenFrame_t = (frame_t[:-1] + frame_t[1:]) / 2
+    adjustIncs_lower = np.where(gaze_t < betweenFrame_t.min())
+    adjustIncs_higher = np.where(gaze_t > betweenFrame_t.max())
+    rmidcs = np.concatenate((adjustIncs_lower, adjustIncs_higher), axis=1)
+    labels = np.delete(labels, rmidcs)
+    gaze = np.delete(gaze, rmidcs, axis=0)
+    gaze_t = np.delete(gaze_t, rmidcs)
+
 
 
     # map the labels to our method label
@@ -112,21 +196,36 @@ def preprocessor(gaze, patchSim, headRot, gaze_t, frame_t, labels, lblMatch):
     labels[labels == 3] = 2; lblMatch[lblMatch == 3] = 2; 
     # Gaze Following = 3 (originally 5)
     labels[labels == 5] = 3; lblMatch[lblMatch == 5] = 3; 
+
+
+
     
+    # print("number of fixations " + str(len(np.where(labels==0)[0])) + ", saccades " + str(len(np.where(labels==2)[0])) + ", gazeP " + str(len(np.where(labels==1)[0])) + ", gazeF " + str(len(np.where(labels==3)[0])))
+
+
+    
+    
+
 
     # extract gaze features
     gaze_feat, labels_new = gazeFeatureExtractor(gaze, labels)
     
 
-
-
-    return gaze_feat, labels_new
-    
+    # print("number of fixations " + str(len(np.where(labels==0)[0])) + ", saccades " + str(len(np.where(labels==2)[0])) + ", gazeP " + str(len(np.where(labels==1)[0])) + ", gazeF " + str(len(np.where(labels==3)[0])))
+    # 
     # interpolate patch similarities and head rotations to the same sampling rate as gaze
 
-    # betweenFrame_t = (frame_t[:-1] + frame_t[1:]) / 2
+    
 
-    # new_patchSim = interpolate(patchSim, betweenFrame_t, gaze_t)
-    # new_headRot = interpolate(headRot, betweenFrame_t, gaze_t)
+    new_patchSim = interpolate(patchSim, betweenFrame_t, gaze_t)
+
+    new_headRot = interpolate(headRot, betweenFrame_t, gaze_t)
+
+    head_feats = extract_head_features_single(new_headRot)
+
+    # final_feats = np.concatenate((gaze_feat, head_feats, np.transpose([new_patchSim[300:]])), axis=1)
+    final_feats = np.concatenate((gaze_feat, head_feats, np.transpose([new_patchSim])), axis=1)
+
+    return final_feats, labels_new
 
 

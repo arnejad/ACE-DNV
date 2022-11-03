@@ -22,7 +22,7 @@ def knowledgePanel_update(axs, nxtPatch, finalRes):
     axs[0].plot(finalRes[:,0])
     axs[1].plot(finalRes[:,1])
     axs[2].plot(finalRes[:,2])
-    # axs[3].imshow(nxtPatch)
+    axs[3].plot(finalRes[:,3])
     
 
 # Saves a png file for changes in gaze coordinats
