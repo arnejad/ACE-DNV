@@ -1,5 +1,5 @@
 # DATA VARIABLES
-DATASET = "GiW"
+DATASET = "GiW-selected"
 # INP_DIR = '/home/ashdev/samples/004'      # the input directory containing the video and gaze signal
 INP_DIR = '/media/ashdev/Expansion/data/GiW/'
 LABELER = 5

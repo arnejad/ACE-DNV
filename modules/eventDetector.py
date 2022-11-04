@@ -22,8 +22,8 @@ def eventDetector_new(feats, lbls):
 
     rmInd = np.where(lbls==3)[0]
 
-    lbls = np.delete(lbls, rmInd[:100000])
-    feats = np.delete(feats, rmInd[:100000], axis=0)
+    lbls = np.delete(lbls, rmInd[:80000])
+    feats = np.delete(feats, rmInd[:80000], axis=0)
     # indices = np.random.permutation(np.random.rand(data_len, 1))
     # divider_idx = int(test_ratio*data_len)
     # training_idx, test_idx = indices[divider_idx:], indices[:divider_idx]

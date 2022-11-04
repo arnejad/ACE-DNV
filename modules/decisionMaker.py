@@ -163,6 +163,11 @@ def batchMaker_new(X, Y, batch_size, timesteps, train):
     timeseries = np.squeeze(np.array(timeseries, dtype=object)) 
     Y = np.squeeze(np.array(lbls_all, dtype=object))
 
+    # #temp delete gaze followings
+    # rmInd = np.where(Y==3)[0]
+
+    # Y = np.delete(Y, rmInd[6000:])
+    # timeseries = np.delete(timeseries, rmInd[6000:], axis=0)
 
     if train:
         timeseries = np.concatenate(timeseries); Y = np.concatenate(Y)
@@ -232,7 +237,7 @@ def execute(x, y):
     kernel_size = 5
     dropout = 0.25
     features = 5
-    epochs = 80
+    epochs = 3000
     num_batches = 587
     batch_size = 1024
     rand = True
@@ -246,8 +251,8 @@ def execute(x, y):
     model.cuda()
 
 
-    valid_x, valid_y = x[7], y[7]
-    x, y = np.delete(x,7), np.delete(y,7)
+    valid_x, valid_y = x[0], y[0]
+    x, y = np.delete(x,0), np.delete(y,0)
 
     valid_batches_x, valid_batches_y = batchMaker_new([valid_x], [valid_y], batch_size, timesteps, train=False)
 
