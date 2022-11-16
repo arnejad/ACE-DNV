@@ -9,7 +9,7 @@ from modules.decisionMaker import print_scores as print_scores
 from sklearn.model_selection import train_test_split
 import torch
 
-from config import PATCH_SIM_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH, PATCH_SIZE, LAMBDA, PATCH_PRIOR_STEPS
+from config import PATCH_SIM_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH, PATCH_SIZE, LAMBDA, PATCH_PRIOR_STEPS, OUT_DIR
 
 def eventDetector_new(feats, lbls):
 
@@ -22,23 +22,41 @@ def eventDetector_new(feats, lbls):
 
     rmInd = np.where(lbls==3)[0]
 
-    lbls = np.delete(lbls, rmInd[:80000])
-    feats = np.delete(feats, rmInd[:80000], axis=0)
+    lbls[rmInd] = 1
+    # lbls = np.delete(lbls, rmInd[:8000])
+    # feats = np.delete(feats, rmInd[:8000], axis=0)
     # indices = np.random.permutation(np.random.rand(data_len, 1))
     # divider_idx = int(test_ratio*data_len)
     # training_idx, test_idx = indices[divider_idx:], indices[:divider_idx]
 
     X_train, X_test, y_train, y_test = train_test_split(feats, lbls, test_size=0.33, random_state=42)
 
+
     clf = RandomForestClassifier(random_state=0, criterion='gini', n_estimators=40)
-
-
     clf.fit(X_train, y_train)
-
     preds = clf.predict(X_test)
     preds = torch.from_numpy(preds)
     lbls = torch.from_numpy(y_test)
     print_scores(preds, lbls, 0, 'RF')
+
+    
+
+    lbl_list = np.unique(lbls)
+    for c in lbl_list:
+        y = np.array(y_train)
+        y[y!=c] = 10
+        y[y==c] = 1
+        y[y==10] = 0
+        clf = RandomForestClassifier(random_state=0, criterion='gini', n_estimators=40)
+        clf.fit(X_train, y)
+        preds = clf.predict(X_test)
+        preds = torch.from_numpy(preds)
+        y = np.array(y_test)
+        y[y!=c] = 10
+        y[y==c] = 1
+        y[y==10] = 0
+        lbls = torch.from_numpy(y)
+        print_scores(preds, lbls, 0, 'RF')
 
 
 

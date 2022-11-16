@@ -30,7 +30,7 @@ class CNN_LSTM(nn.Module):
             conv_layers += [nn.Conv1d(input_conv, conv_filters[i], kernel_size,
                                       padding=padding, padding_mode='replicate')]
             conv_layers += [nn.BatchNorm1d(conv_filters[i])]
-            conv_layers += [nn.LeakyReLU()]        
+            conv_layers += [nn.ReLU()]        
         self.conv_layers = nn.Sequential(*conv_layers)
         self.flatten = TimeDistributed(nn.Flatten(), batch_first=True)
         hidden_state = 32
@@ -232,7 +232,7 @@ def execute(x, y):
 
 
     learning_rate = 0.0001
-    timesteps = 25
+    timesteps = 11
     n_classes = 4
     kernel_size = 5
     dropout = 0.25
@@ -251,18 +251,22 @@ def execute(x, y):
     model.cuda()
 
 
-    valid_x, valid_y = x[0], y[0]
-    x, y = np.delete(x,0), np.delete(y,0)
+    # valid_x, valid_y = x[0], y[0]
+    # x, y = np.delete(x,0), np.delete(y,0)
 
-    valid_batches_x, valid_batches_y = batchMaker_new([valid_x], [valid_y], batch_size, timesteps, train=False)
+    # valid_batches_x, valid_batches_y = batchMaker_new([valid_x], [valid_y], batch_size, timesteps, train=False)
 
+    allBatches_x, allBatches_y = batchMaker_new(x, y, batch_size, timesteps, train=True)
+    valid_batches_x, valid_batches_y = allBatches_x[0], allBatches_y[0]
+    trainBatches_X, trainBatches_Y = allBatches_x[1:], allBatches_y[1:]
+    
     optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
     scores = []
     steps = 0
     for epoch in range(1, epochs+1):
         cost = 0
         
-        trainBatches_X, trainBatches_Y = batchMaker_new(x,y, batch_size, timesteps, train=True)
+        # trainBatches_X, trainBatches_Y = batchMaker_new(x,y, batch_size, timesteps, train=True)
 
         for k in range(len(trainBatches_Y)):
             cost += train(model, optimizer, trainBatches_X[k], trainBatches_Y[k])
@@ -278,8 +282,8 @@ def execute(x, y):
         
         
         # preds, labels, t_loss = test(model, trainBatches_X[k], trainBatches_Y[k])
-        k = random.randint(0, len(valid_batches_y)-1)
-        preds, labels, t_loss = test(model, valid_batches_x[k], valid_batches_y[k])
+        # k = random.randint(0, len(valid_batches_y)-1)
+        preds, labels, t_loss = test(model, valid_batches_x, valid_batches_y)
         score = print_scores(preds, labels, t_loss, 'Val.')
         scores.append(score)
 

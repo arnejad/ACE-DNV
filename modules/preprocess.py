@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
+
 
 from config import ET_FREQ
 
@@ -227,5 +229,18 @@ def preprocessor(gaze, patchSim, headRot, gaze_t, frame_t, labels, lblMatch):
     final_feats = np.concatenate((gaze_feat, head_feats, np.transpose([new_patchSim])), axis=1)
 
     return final_feats, labels_new
+
+
+def data_stats(y):
+
+    lbls = np.squeeze(y)
+    lbls = np.concatenate(y)
+
+    plt.hist(lbls, bins = 4)
+    plt.show()
+
+
+# def balancer(x,y):
+
 
 

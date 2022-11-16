@@ -19,7 +19,7 @@ from NEED import train as NEED_train
 from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES, LABELER
 from modules.eventDetector import eventDetector_new as eventDetector
 from modules.decisionMaker import execute as run_need
-from modules.preprocess import preprocessor
+from modules.preprocess import preprocessor, data_stats
 
 ########## DATA PREPARATION
 
@@ -341,13 +341,22 @@ elif DATASET == "GiW-selected":
 
         #temp delete gaze followings
         rmInd = np.where(lbls==3)[0]
+        lbls = np.delete(lbls, rmInd[6000:])
+        feats = np.delete(feats, rmInd[6000:], axis=0)
 
-        lbls = np.delete(lbls, rmInd[10000:])
-        feats = np.delete(feats, rmInd[10000:], axis=0)
+        #temp delete fixation
+        # rmInd = np.where(lbls==0)[0]
+        # lbls = np.delete(lbls, rmInd[4587:])
+        # feats = np.delete(feats, rmInd[4587:], axis=0)
+
+        # #temp delete fixation
+        # rmInd = np.where(lbls==2)[0]
+        # lbls = np.delete(lbls, rmInd[2500:])
+        # feats = np.delete(feats, rmInd[2500:], axis=0)
 
         print("number of fixations " + str(len(np.where(lbls==0)[0])) + ", saccades " + str(len(np.where(lbls==2)[0])) + ", gazeP " + str(len(np.where(lbls==1)[0])) + ", gazeF " + str(len(np.where(lbls==3)[0])))
         
-
+        lbls[np.where(lbls==3)] = 1
         
         ds_x.append(feats)
         ds_y.append(lbls)
@@ -371,6 +380,8 @@ elif DATASET == "GiW-selected":
 # feats,lbls = preprocessor(gazes, patchDists, envChanges, T, TMatch, labels, lblMatch)
 
 # eventDetector(ds_x, ds_y)
+
+# data_stats(ds_y)
 
 ds_x = np.array(ds_x, dtype=object); ds_y = np.array(ds_y, dtype=object)
 
