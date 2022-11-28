@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.ndimage import median_filter
 import matplotlib.pyplot as plt
 
 
@@ -125,6 +126,13 @@ def extract_head_features_single(x):
         tr_tensor[i][1] = np.math.atan(diff_x)
     return tr_tensor
 
+
+def extract_body_features(coords):
+    
+    dist = np.linalg.norm(coords[:-1] - coords[1:], axis=1)
+    vel = dist/(1/ET_FREQ)
+    return vel
+
 def get_start_end( i, step):
     '''
     i -> the most recent position
@@ -136,18 +144,32 @@ def get_start_end( i, step):
     return start_pos, end_pos
 
 
+
 def interpolate(signal, current_t, target_t):
 
-    # fit the interpolation
-    f = interp1d(current_t, signal, kind='cubic')
-
-    # extract the target timepoints 
-    ynew = f(target_t)
+    # check if the signal has more than one dimention
+    if len(signal.shape) > 1:
+        ynew = []
+        for d in range (signal.shape[1]):
+            f = interp1d(current_t, signal[:,d], kind='cubic')
+            ynew_col = f(target_t)
+            if ynew==[]:
+                ynew = ynew_col
+            else:
+                ynew= np.column_stack((ynew, ynew_col))
+    else:
+        # fit the interpolation
+        f = interp1d(current_t, signal, kind='cubic')
+        ynew = f(target_t)
+        # extract the target timepoints 
+        
 
     return ynew
 
+def NormalizeData(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
 
-def preprocessor(gaze, patchSim, headRot, gaze_t, frame_t, labels, lblMatch):
+def preprocessor(gaze, patchSim, headRot, bodyLoc, gaze_t, frame_t, labels, lblMatch):
 
     
     # remove blinks and unlabled data #TODO remove also neighboring events
@@ -172,11 +194,14 @@ def preprocessor(gaze, patchSim, headRot, gaze_t, frame_t, labels, lblMatch):
         rmidcs = np.delete(rmidcs[0], np.where(rmidcs==(len(lblMatch)-1))[1])
         patchSim = np.delete(patchSim, rmidcs)
         headRot =  np.delete(headRot, rmidcs)
+        bodyLoc =  np.delete(bodyLoc, rmidcs, axis=0)
         patchSim = patchSim[:-1]
         headRot = headRot[:-1]
+        bodyLoc = bodyLoc[:-1,:]
     else:
         patchSim = np.delete(patchSim, rmidcs)
         headRot =  np.delete(headRot, rmidcs)
+        bodyLoc =  np.delete(bodyLoc, rmidcs, axis=0)
 
     betweenFrame_t = (frame_t[:-1] + frame_t[1:]) / 2
     adjustIncs_lower = np.where(gaze_t < betweenFrame_t.min())
@@ -219,14 +244,26 @@ def preprocessor(gaze, patchSim, headRot, gaze_t, frame_t, labels, lblMatch):
 
     
 
+    # none-gaze-related (body translation and head rotaion) feature extrtaction
+    head_feats = extract_head_features_single(headRot)
+    body_feat = extract_body_features(bodyLoc)
+    body_feat = np.concatenate((body_feat, [body_feat[-1]])) #TODO make more accurate
+
+    # filtering body movement spikes
+    # body_feat = median_filter(body_feat, size=20)
+    body_feat[np.where(body_feat > np.quantile(body_feat, 0.75))] = np.quantile(body_feat, 0.75)
+    body_feat = NormalizeData(body_feat)
+
+    # signal interpolations
+    head_feats = interpolate(head_feats, betweenFrame_t, gaze_t)
+    body_feat = interpolate(body_feat, betweenFrame_t, gaze_t)
     new_patchSim = interpolate(patchSim, betweenFrame_t, gaze_t)
 
-    new_headRot = interpolate(headRot, betweenFrame_t, gaze_t)
-
-    head_feats = extract_head_features_single(new_headRot)
+    
+    
 
     # final_feats = np.concatenate((gaze_feat, head_feats, np.transpose([new_patchSim[300:]])), axis=1)
-    final_feats = np.concatenate((gaze_feat, head_feats, np.transpose([new_patchSim])), axis=1)
+    final_feats = np.column_stack((gaze_feat, head_feats, body_feat, np.transpose([new_patchSim])))
 
     return final_feats, labels_new
 

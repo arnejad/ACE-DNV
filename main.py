@@ -156,18 +156,18 @@ elif DATASET == "GiW":
         gazes = np.array(processData['ProcessData']['ETG'][0,0][0,0][8] * processData['ProcessData']['ETG'][0,0][0,0][0])
         
         # load the environment
-        # envChanges = VOAnalyzer(returnDist=False)
+        # headRot = VOAnalyzer(returnDist=False)
 
         visod = np.loadtxt(INP_DIR+participants[p] + "/"+ str(ACTIVITY_NUM) + "/visOdom.txt", delimiter=' ')
 
-        envChanges = visod[:,5]
+        headRot = visod[:,5]
 
         frameRange = np.loadtxt(INP_DIR+participants[p] + "/"+ str(ACTIVITY_NUM) + "/range.txt", delimiter=' ')
         startFrame = frameRange[0]+1
         endFrame = frameRange[1]
 
-        # if not all envChanges were computed we trim until where available
-        rm_indcs = np.where(frames >= len(envChanges)+startFrame)
+        # if not all headRot were computed we trim until where available
+        rm_indcs = np.where(frames >= len(headRot)+startFrame)
         indcs = np.delete(indcs, rm_indcs[0])
         frames = np.delete(frames, rm_indcs[0])
         # gazeEndTrimmer = np.min(rm_indcs)
@@ -193,7 +193,7 @@ elif DATASET == "GiW":
         lblMatch = labels[indcs]
         TMatch = T[indcs]
 
-        envChanges = envChanges[frames[:-1]-(int(startFrame)-1)]
+        headRot = headRot[frames[:-1]-(int(startFrame)-1)]
 
 
         # through our timestamps in the gaze in the beginning
@@ -215,7 +215,7 @@ elif DATASET == "GiW":
 
         patchDists = np.transpose(np.array(patchDists))
 
-        feats,lbls = preprocessor(gazes, patchDists, envChanges, T, TMatch, labels, lblMatch)
+        feats,lbls = preprocessor(gazes, patchDists, headRot, T, TMatch, labels, lblMatch)
 
         #temp delete gaze followings
         rmInd = np.where(lbls==3)[0]
@@ -278,18 +278,20 @@ elif DATASET == "GiW-selected":
         gazes = np.array(processData['ProcessData']['ETG'][0,0][0,0][8] * processData['ProcessData']['ETG'][0,0][0,0][0])
         
         # load the environment
-        # envChanges = VOAnalyzer(returnDist=False)
+        # headRot = VOAnalyzer(returnDist=False)
 
         visod = np.loadtxt(INP_DIR+participantNum + "/"+ str(activityNum) + "/visOdom.txt", delimiter=' ')
 
-        envChanges = visod[:,5]
+        headRot = visod[:,5]
+        bodyMotion = visod[:,1:3]
+
 
         frameRange = np.loadtxt(INP_DIR+participantNum + "/"+ str(activityNum) + "/range.txt", delimiter=' ')
         startFrame = frameRange[0]+1
         endFrame = frameRange[1]
 
-        # if not all envChanges were computed we trim until where available
-        rm_indcs = np.where(frames >= len(envChanges)+startFrame)
+        # if not all headRot were computed we trim until where available
+        rm_indcs = np.where(frames >= len(headRot)+startFrame)
         indcs = np.delete(indcs, rm_indcs[0])
         frames = np.delete(frames, rm_indcs[0])
         # gazeEndTrimmer = np.min(rm_indcs)
@@ -315,8 +317,8 @@ elif DATASET == "GiW-selected":
         lblMatch = labels[indcs]
         TMatch = T[indcs]
 
-        envChanges = envChanges[frames[:-1]-(int(startFrame)-1)]
-
+        headRot = headRot[frames[:-1]-(int(startFrame)-1)]
+        bodyMotion = bodyMotion[frames[:-1]-(int(startFrame)-1)]
 
         # through our timestamps in the gaze in the beginning
         gazes = gazes[T>TMatch[0]]
@@ -337,7 +339,7 @@ elif DATASET == "GiW-selected":
 
         patchDists = np.transpose(np.array(patchDists))
 
-        feats,lbls = preprocessor(gazes, patchDists, envChanges, T, TMatch, labels, lblMatch)
+        feats,lbls = preprocessor(gazes, patchDists, headRot, bodyMotion, T, TMatch, labels, lblMatch)
 
         #temp delete gaze followings
         rmInd = np.where(lbls==3)[0]
@@ -356,13 +358,13 @@ elif DATASET == "GiW-selected":
 
         print("number of fixations " + str(len(np.where(lbls==0)[0])) + ", saccades " + str(len(np.where(lbls==2)[0])) + ", gazeP " + str(len(np.where(lbls==1)[0])) + ", gazeF " + str(len(np.where(lbls==3)[0])))
         
-        lbls[np.where(lbls==3)] = 1
+        # lbls[np.where(lbls==3)] = 1
         
         ds_x.append(feats)
         ds_y.append(lbls)
 
-        # np.savetxt(OUT_DIR+'feats.csv', feats, delimiter=',')
-        # np.savetxt(OUT_DIR+'lbls.csv', lbls, delimiter=',')
+        np.savetxt(OUT_DIR+'feats_p' + str(participantNum) + '_a' + str(activityNum) +  '.csv', feats, delimiter=',')
+        np.savetxt(OUT_DIR+'lbls_p' + str(participantNum) + '_a' + str(activityNum) + '_l' + str(LABELER) +'.csv', lbls, delimiter=',')
         # np.savetxt(OUT_DIR+'frames.csv', frames, delimiter=',')
         print("Data successfully loaded for participant " + str(participantNum))
     
@@ -377,7 +379,7 @@ elif DATASET == "GiW-selected":
 
 # Preprocess
 
-# feats,lbls = preprocessor(gazes, patchDists, envChanges, T, TMatch, labels, lblMatch)
+# feats,lbls = preprocessor(gazes, patchDists, headRot, T, TMatch, labels, lblMatch)
 
 # eventDetector(ds_x, ds_y)
 
@@ -402,8 +404,8 @@ rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
 
 ################### ML method feature creation
 
-# featSet = np.column_stack((patchDists[:-1], gazes, envChanges[:-1,:]))
-featSet = np.column_stack((patchDists, gazeMatch[:-1,:], envChanges))
+# featSet = np.column_stack((patchDists[:-1], gazes, headRot[:-1,:]))
+featSet = np.column_stack((patchDists, gazeMatch[:-1,:], headRot))
 
 lblSet = np.delete(lblSet, rmidcs)
 featSet = np.delete(featSet, rmidcs,0)
@@ -442,14 +444,14 @@ gazeDists = ndimage.median_filter(gazeDists, size=10)
 lblSet = np.delete(lblSet, rmidcs)
 gazeDists = np.delete(gazeDists, rmidcs)
 patchDists = np.delete(patchDists, rmidcs)
-envChanges = np.delete(envChanges, rmidcs)
+headRot = np.delete(headRot, rmidcs)
 
 
-# visual.knowledgePanel_update(axs, None, np.column_stack((patchDists[:-1], gazeDists, envChanges[:-1])))
+# visual.knowledgePanel_update(axs, None, np.column_stack((patchDists[:-1], gazeDists, headRot[:-1])))
 # fig.show()
 
 
-res = eventDetector(patchDists, gazeDists,envChanges, lblSet)
+res = eventDetector(patchDists, gazeDists,headRot, lblSet)
 
 matches = len(np.where(res == np.transpose(lblSet)[0])[0])
 print(matches/len(lblSet))

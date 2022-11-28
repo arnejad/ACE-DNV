@@ -232,11 +232,11 @@ def execute(x, y):
 
 
     learning_rate = 0.0001
-    timesteps = 11
+    timesteps = 25
     n_classes = 4
     kernel_size = 5
     dropout = 0.25
-    features = 5
+    features = 6
     epochs = 3000
     num_batches = 587
     batch_size = 1024
