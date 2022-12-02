@@ -17,9 +17,10 @@ import modules.visualizer as visual
 from modules.PatchSimNet import pred_all as patchNet_predAll
 from NEED import train as NEED_train
 from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES, LABELER
-from modules.eventDetector import eventDetector_new as eventDetector
+from modules.eventDetector import eventDetector_new as train_RF
+from modules.eventDetector import pred_detector as pred_RF
 from modules.decisionMaker import execute as run_need
-from modules.preprocess import preprocessor, data_stats
+from modules.preprocess import preprocessor, data_stats, data_balancer
 
 ########## DATA PREPARATION
 
@@ -342,16 +343,16 @@ elif DATASET == "GiW-selected":
         feats,lbls = preprocessor(gazes, patchDists, headRot, bodyMotion, T, TMatch, labels, lblMatch)
 
         #temp delete gaze followings
-        rmInd = np.where(lbls==3)[0]
-        lbls = np.delete(lbls, rmInd[6000:])
-        feats = np.delete(feats, rmInd[6000:], axis=0)
+        # rmInd = np.where(lbls==3)[0]
+        # lbls = np.delete(lbls, rmInd[5000:])
+        # feats = np.delete(feats, rmInd[5000:], axis=0)
 
-        #temp delete fixation
+        # #temp delete fixation
         # rmInd = np.where(lbls==0)[0]
         # lbls = np.delete(lbls, rmInd[4587:])
         # feats = np.delete(feats, rmInd[4587:], axis=0)
 
-        # #temp delete fixation
+        # # #temp delete fixation
         # rmInd = np.where(lbls==2)[0]
         # lbls = np.delete(lbls, rmInd[2500:])
         # feats = np.delete(feats, rmInd[2500:], axis=0)
@@ -379,15 +380,27 @@ elif DATASET == "GiW-selected":
 
 # Preprocess
 
-# feats,lbls = preprocessor(gazes, patchDists, headRot, T, TMatch, labels, lblMatch)
+ds_x, ds_y = data_balancer(ds_x, ds_y)
 
-# eventDetector(ds_x, ds_y)
+# feats,lbls = preprocessor(gazes, patchDists, headRot, T, TMatch, labels, lblMatch)
+ds_x = np.array(ds_x, dtype=object); ds_y = np.array(ds_y, dtype=object)
+
+# pred_RF(ds_x, ds_y)
 
 # data_stats(ds_y)
 
-ds_x = np.array(ds_x, dtype=object); ds_y = np.array(ds_y, dtype=object)
 
-run_need(ds_x, ds_y)
+
+
+# data_balancer(ds_x, ds_y)
+
+train_RF(ds_x, ds_y)
+
+pred_RF(ds_x)
+
+
+
+# run_need(ds_x, ds_y)
 
 
 # get environment changes
@@ -451,7 +464,7 @@ headRot = np.delete(headRot, rmidcs)
 # fig.show()
 
 
-res = eventDetector(patchDists, gazeDists,headRot, lblSet)
+res = train_RF(patchDists, gazeDists,headRot, lblSet)
 
 matches = len(np.where(res == np.transpose(lblSet)[0])[0])
 print(matches/len(lblSet))

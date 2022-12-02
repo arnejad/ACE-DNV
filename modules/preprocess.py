@@ -271,13 +271,63 @@ def preprocessor(gaze, patchSim, headRot, bodyLoc, gaze_t, frame_t, labels, lblM
 def data_stats(y):
 
     lbls = np.squeeze(y)
-    lbls = np.concatenate(y)
+    # lbls = np.concatenate(y)
 
     plt.hist(lbls, bins = 4)
     plt.show()
 
 
 # def balancer(x,y):
+
+
+
+def data_balancer(x, y):
+
+    hists = np.zeros((len(x), 4))
+    
+    # for each recording
+    for r in range(len(x)):
+
+        # for each class
+        for c in range(0,4):
+            count_c = len(np.where(y[r]==c)[0])
+            hists[r, c] = count_c
+            
+    all_counts = np.sum(hists, axis=0)
+
+    min_count = np.min(all_counts)
+
+    # for each event
+    for c in range(0,4):
+        #divide$&conqure resampling
+        delection_counts = np.array(hists[:, c])
+        goal_diff = all_counts[c] - min_count
+        # delection_counts = np.zeros(len(hists[:,0]))
+
+        remain = min_count
+        while True:
+
+            record_extract_factor = np.round(remain / len(np.where(delection_counts > 0)[0]))
+            # record_extract_factor = goal_diff
+            delection_counts[np.where(delection_counts>0)] -= record_extract_factor
+
+            if len(np.where(delection_counts < 0)[0]) == 0:
+                hists[:, c] -= delection_counts  # subtract the number to be erased
+                break
+            else:
+                remain = np.sum(np.abs(delection_counts[np.where(delection_counts<0)]))
+                delection_counts[np.where(delection_counts<0)] = 0
+
+
+    #remove samples            
+    for c in range(0,4): #each class
+        for r in range(len(x)):  #each recordings
+            count = hists[r, c]
+            rmInd = np.where(y[r]==c)[0]
+            y[r] = np.delete(y[r], rmInd[int(count):])
+            x[r] = np.delete(x[r], rmInd[int(count):], axis=0)
+
+    return x, y
 
 
 

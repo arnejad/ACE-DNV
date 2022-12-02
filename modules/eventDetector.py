@@ -7,7 +7,11 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from modules.decisionMaker import print_scores as print_scores
 from sklearn.model_selection import train_test_split
+from modules.preprocess import data_stats
+
 import torch
+import pickle
+
 
 from config import PATCH_SIM_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH, PATCH_SIZE, LAMBDA, PATCH_PRIOR_STEPS, OUT_DIR
 
@@ -20,16 +24,18 @@ def eventDetector_new(feats, lbls):
     lbls = np.squeeze(lbls)
     lbls = np.concatenate(lbls)
 
-    rmInd = np.where(lbls==3)[0]
 
+    data_stats(lbls)
+
+    # data_stats(lbls)
     # lbls[rmInd] = 1
-    lbls = np.delete(lbls, rmInd[:8000])
-    feats = np.delete(feats, rmInd[:8000], axis=0)
+    # lbls = np.delete(lbls, rmInd[:8000])
+    # feats = np.delete(feats, rmInd[:8000], axis=0)
     # indices = np.random.permutation(np.random.rand(data_len, 1))
     # divider_idx = int(test_ratio*data_len)
     # training_idx, test_idx = indices[divider_idx:], indices[:divider_idx]
 
-    X_train, X_test, y_train, y_test = train_test_split(feats, lbls, test_size=0.33, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(feats, lbls, test_size=0.2, random_state=42)
 
 
     clf = RandomForestClassifier(random_state=0, criterion='gini', n_estimators=40)
@@ -38,6 +44,9 @@ def eventDetector_new(feats, lbls):
     preds = torch.from_numpy(preds)
     lbls = torch.from_numpy(y_test)
     print_scores(preds, lbls, 0, 'RF')
+
+    pickle.dump(clf, open(OUT_DIR+'/models/RF.sav', 'wb'))
+
 
     
 
@@ -125,6 +134,24 @@ def eventDetector_new(feats, lbls):
         else:
             print("Wrong: {} instead of {}".format(decision, lbls[i]))
         decisions.append(decision)
+
+
+def pred_detector(feats, lbls):
+
+    feats = np.squeeze(feats)
+    feats = np.concatenate(feats)
+    lbls = np.squeeze(lbls)
+    lbls = np.concatenate(lbls)
+
+    clf = pickle.load(open(OUT_DIR+'/models/RF.sav', 'rb'))
+    preds = clf.predict(feats)
+
+    preds = torch.from_numpy(preds)
+    lbls = torch.from_numpy(lbls)
+
+    print_scores(preds, lbls, 0, 'RF')
+
+    return preds
 
 
 def  eventDetector(patchSim, gazeDists, orientChange, lbls):
