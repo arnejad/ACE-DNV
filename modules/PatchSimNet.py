@@ -108,15 +108,18 @@ def pred_all(vidDir, gazes, target_frames):
     t = 1 
     cap = cv.VideoCapture(cv.samples.findFile(vidDir)) #prepare the target video
 
+    print("computing the gaze patch similarities")
     while(1):
 
         ret, frame = cap.read()
+
+        print("skipped " + str(f))
 
         if (not ret) or (t==(len(gazes)-1)):
             print('Patch similarities computed successfully!')
             break
 
-        print("skipped " + str(f))
+        # print("skipped " + str(f))
 
         if f < (target_frames[t]-2): # -1 because python starts counting from zero but frames start from 1
             f += 1
@@ -162,7 +165,9 @@ def pred_all(vidDir, gazes, target_frames):
             prvFrame = nxtFrame
             continue
         # else:
-        #     cv.imshow('grayscale image', prvPatch)
+        
+        
+        # cv.imshow('grayscale image', prvPatch)
 
             
         inp[0,:,:] = cv.resize(prvPatch, (64,64))
@@ -179,4 +184,5 @@ def pred_all(vidDir, gazes, target_frames):
         prvPatch = nxtPatch
         prvFrame = nxtFrame
     
+    print("Finished!")
     return normDists

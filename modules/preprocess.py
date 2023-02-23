@@ -65,7 +65,8 @@ def extract_gaze_features_single(x,y, targets):
     offset = 0
     ini = 0
     tr_tensor  = np.zeros((len(x)-ini, 2)) #num X sets of features
-    tgt_tensor = np.zeros(len(targets)-ini,)
+
+    if not targets is None: tgt_tensor = np.zeros(len(targets)-ini,)
     for i in range(ini, len(x)-1):
         diff_x = x[i] - x[i+1]
         diff_y = y[i] - y[i+1]
@@ -75,7 +76,11 @@ def extract_gaze_features_single(x,y, targets):
         tr_tensor[i-ini][0] = ampl/time
         #saving direction % window
         tr_tensor[i][1] = np.math.atan2(diff_y, diff_x)
-    tgt_tensor = targets
+    if not targets is None: 
+        tgt_tensor = targets
+    else: 
+        tgt_tensor = None
+        
     return tr_tensor, tgt_tensor
 
 def extract_head_features(x):
@@ -174,55 +179,56 @@ def preprocessor(gaze, patchSim, headRot, bodyLoc, gaze_t, frame_t, labels, lblM
     
     # remove blinks and unlabled data #TODO remove also neighboring events
 
-    rmidcs_nans = np.where(labels == 0)
-    rmidcs_blinks = np.where(labels == 4) # remove blinks
+    if not labels is None:
+        rmidcs_nans = np.where(labels == 0)
+        rmidcs_blinks = np.where(labels == 4) # remove blinks
 
-    rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
-    labels = np.delete(labels, rmidcs)
-    gaze = np.delete(gaze, rmidcs, axis=0)
-    gaze_t = np.delete(gaze_t, rmidcs)
+        rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
+        labels = np.delete(labels, rmidcs)
+        gaze = np.delete(gaze, rmidcs, axis=0)
+        gaze_t = np.delete(gaze_t, rmidcs)
 
-    rmidcs_nans = np.where(lblMatch == 0)
-    rmidcs_blinks = np.where(lblMatch == 4) # remove blinks
-    rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
-    frame_t = np.delete(frame_t, rmidcs)
+        rmidcs_nans = np.where(lblMatch == 0)
+        rmidcs_blinks = np.where(lblMatch == 4) # remove blinks
+        rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
+        frame_t = np.delete(frame_t, rmidcs)
     # patchSim = np.delete(patchSim, rmidcs)
     # headRot = np.delete(headRot, rmidcs)
 
 
-    if len(lblMatch)-1 in rmidcs :
-        rmidcs = np.delete(rmidcs[0], np.where(rmidcs==(len(lblMatch)-1))[1])
-        patchSim = np.delete(patchSim, rmidcs)
-        headRot =  np.delete(headRot, rmidcs)
-        bodyLoc =  np.delete(bodyLoc, rmidcs, axis=0)
-        patchSim = patchSim[:-1]
-        headRot = headRot[:-1]
-        bodyLoc = bodyLoc[:-1,:]
-    else:
-        patchSim = np.delete(patchSim, rmidcs)
-        headRot =  np.delete(headRot, rmidcs)
-        bodyLoc =  np.delete(bodyLoc, rmidcs, axis=0)
+        if len(lblMatch)-1 in rmidcs :
+            rmidcs = np.delete(rmidcs[0], np.where(rmidcs==(len(lblMatch)-1))[1])
+            patchSim = np.delete(patchSim, rmidcs)
+            headRot =  np.delete(headRot, rmidcs)
+            bodyLoc =  np.delete(bodyLoc, rmidcs, axis=0)
+            patchSim = patchSim[:-1]
+            headRot = headRot[:-1]
+            bodyLoc = bodyLoc[:-1,:]
+        else:
+            patchSim = np.delete(patchSim, rmidcs)
+            headRot =  np.delete(headRot, rmidcs)
+            bodyLoc =  np.delete(bodyLoc, rmidcs, axis=0)
 
     betweenFrame_t = (frame_t[:-1] + frame_t[1:]) / 2
     adjustIncs_lower = np.where(gaze_t < betweenFrame_t.min())
     adjustIncs_higher = np.where(gaze_t > betweenFrame_t.max())
     rmidcs = np.concatenate((adjustIncs_lower, adjustIncs_higher), axis=1)
-    labels = np.delete(labels, rmidcs)
+    if not labels is None: labels = np.delete(labels, rmidcs)
     gaze = np.delete(gaze, rmidcs, axis=0)
     gaze_t = np.delete(gaze_t, rmidcs)
 
 
 
     # map the labels to our method label
-    
-    # Fixation = 0 (originally 1),
-    labels[labels == 1] = 0; lblMatch[lblMatch == 1] = 0; 
-    # Gaze Pursuit = 1 (originally 2),
-    labels[labels == 2] = 1; lblMatch[lblMatch == 2] = 1; 
-    # Saccade = 2 (originally 3),
-    labels[labels == 3] = 2; lblMatch[lblMatch == 3] = 2; 
-    # Gaze Following = 3 (originally 5)
-    labels[labels == 5] = 3; lblMatch[lblMatch == 5] = 3; 
+    if not labels is None:
+        # Fixation = 0 (originally 1),
+        labels[labels == 1] = 0; lblMatch[lblMatch == 1] = 0; 
+        # Gaze Pursuit = 1 (originally 2),
+        labels[labels == 2] = 1; lblMatch[lblMatch == 2] = 1; 
+        # Saccade = 2 (originally 3),
+        labels[labels == 3] = 2; lblMatch[lblMatch == 3] = 2; 
+        # Gaze Following = 3 (originally 5)
+        labels[labels == 5] = 3; lblMatch[lblMatch == 5] = 3; 
 
 
 
@@ -283,13 +289,16 @@ def data_stats(y):
 
 def data_balancer(x, y):
 
-    hists = np.zeros((len(x), 4))
+    tmp_y = np.squeeze(y)
+    tmp_y = np.concatenate(tmp_y)
+    ulbls = np.unique(tmp_y)
+    hists = np.zeros((len(x), len(ulbls)))
     
     # for each recording
     for r in range(len(x)):
 
         # for each class
-        for c in range(0,4):
+        for c in range(0,len(ulbls)):
             count_c = len(np.where(y[r]==c)[0])
             hists[r, c] = count_c
             
@@ -298,7 +307,7 @@ def data_balancer(x, y):
     min_count = np.min(all_counts)
 
     # for each event
-    for c in range(0,4):
+    for c in range(0,len(ulbls)):
         #divide$&conqure resampling
         delection_counts = np.array(hists[:, c])
         goal_diff = all_counts[c] - min_count
@@ -320,7 +329,7 @@ def data_balancer(x, y):
 
 
     #remove samples            
-    for c in range(0,4): #each class
+    for c in range(0,len(ulbls)): #each class
         for r in range(len(x)):  #each recordings
             count = hists[r, c]
             rmInd = np.where(y[r]==c)[0]

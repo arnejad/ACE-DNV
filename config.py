@@ -1,8 +1,10 @@
 # DATA VARIABLES
 DATASET = "GiW-selected"
+# DATASET = "VisioRUG"
 # INP_DIR = '/home/ashdev/samples/004'      # the input directory containing the video and gaze signal
 INP_DIR = '/media/ashdev/Expansion/data/GiW/'
-LABELER = 5
+# INP_DIR = '/media/ashdev/Expansion/data/Walking_indoors/'
+LABELER = 5               #labeler number or 'MV' for majority voting or 'AG' for agreements
 ACTIVITY_NUM = 1            # only for gaze-in-the-wild dataset
 ACIVITY_NAMES = ["Indoor_Walk", "Ball_Catch", "Tea_Making", "Visual_Search"]
 OUT_DIR = INP_DIR+'res/'

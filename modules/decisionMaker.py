@@ -233,7 +233,7 @@ def execute(x, y):
 
     learning_rate = 0.0001
     timesteps = 25
-    n_classes = 4
+    n_classes = 2
     kernel_size = 5
     dropout = 0.25
     features = 6

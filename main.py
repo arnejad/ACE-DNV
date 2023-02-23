@@ -3,7 +3,7 @@
 
 from enum import unique
 from os import listdir, path
-from os.path import isfile, join
+from os.path import isfile, join, isdir
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,9 +16,10 @@ from modules.timeMatcher import timeMatcher
 import modules.visualizer as visual
 from modules.PatchSimNet import pred_all as patchNet_predAll
 from NEED import train as NEED_train
-from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, GAZE_ERROR, DATASET, ACTIVITY_NUM, ACIVITY_NAMES, LABELER
+from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, DATASET, ACTIVITY_NUM, ACIVITY_NAMES, LABELER
 from modules.eventDetector import eventDetector_new as train_RF
 from modules.eventDetector import pred_detector as pred_RF
+from modules.eventDetector import trainAndTest as NEED_TrainAndTest
 from modules.decisionMaker import execute as run_need
 from modules.preprocess import preprocessor, data_stats, data_balancer
 
@@ -38,64 +39,98 @@ def zScore_norm(featSet):
 
 if DATASET == "VisioRUG":
 
-    # list the files inside the input directory
-    subFiles = [f for f in listdir(INP_DIR) if isfile(join(INP_DIR, f))]
 
-    # find the video in the input directory
-    foundVids = [s for s in subFiles if '.mp4' in s] 
-    if len(foundVids) > 1:  raise Exception("The input directory contains more than one mp4 file")
-    vidPath = INP_DIR+'/'+foundVids[0]
+    # list the folders in the directory
+    recs = [f for f in listdir(INP_DIR) if isdir(join(INP_DIR, f))]
+    ds_x = []
+    ds_y = []
 
-    # checking if gaze.csv exists
-    if path.exists(INP_DIR+'/gaze.csv'): 
-        gazePath = INP_DIR+'/gaze.csv'
-    elif path.exists(INP_DIR+'/gaze_positions.csv'):
-        gazePath = INP_DIR+'/gaze_positions.csv'
-    else:
-        raise Exception("Could not find gaze.csv or gaze_positions.csv file")
+    for r in recs:
+        r = '3'
+        directory = join(INP_DIR, r)
 
-    # checking if timestamp.csv exists
-    if not path.exists(INP_DIR+'/world_timestamps.csv'): raise Exception("Could not find the world_timestamps.csv file")
-    timestampPath = INP_DIR+'/world_timestamps.csv'
+        # list the files inside the input directory
+        subFiles = [f for f in listdir(directory) if isfile(join(directory, f))]
 
-    #read timestamps file
-    tempRead = np.genfromtxt(timestampPath, delimiter=',')
-
-    if CLOUD_FORMAT:
-        timestamps = tempRead[1:, 2]
-    else:
-        timestamps = tempRead[1:, 0]
-
-    #read gaze files
-    tempRead = np.genfromtxt(gazePath, delimiter=',')
-
-    if ~CLOUD_FORMAT:
-        gazes = tempRead[1:,[0,3,4]]
-        #the corrdinate origin is bottom left
-        gazes[:,2] = 1 - gazes[:,2]
-        gazes = gazes * [1, VIDEO_SIZE[1], VIDEO_SIZE[0]]
-    else:
-        gazes = tempRead[1:, 2:]
-
-    # check if imu data exists.
-    if not path.exists(INP_DIR+'/imu_data.csv'): raise Exception("Could not find the imu_data.csv file")
-    imuPath = INP_DIR+'/imu_data.csv'
-
-    imu = np.genfromtxt(imuPath, delimiter=',') #read the imu signal
-    imu = imu[1:, :]
-    imu = np.delete(imu, 1,1)
-
-    ###### PREPROCESS
-    gazeMatch = np.array(timeMatcher(timestamps, gazes))
-    gazeMatch[:,1] = gazeMatch[:,1]+GAZE_ERROR[0]
-    gazeMatch[:,2] = gazeMatch[:,2]+GAZE_ERROR[1]
+        # find the video in the input directory
+        if 'world.mp4' in subFiles: 
+            vidPath = join(directory, 'world.mp4')
+        else:
+            raise Exception("The input directory contains more than one mp4 file")
 
 
-    imuMatch = np.array(timeMatcher(timestamps, imu))
+        # checking if gaze.csv exists
+        if 'gaze.csv' in subFiles: 
+            gazePath = directory+'/gaze.csv'
+        elif 'gaze_positions.csv' in subFiles:
+            gazePath = directory+'/gaze_positions.csv'
+        else:
+            raise Exception("Could not find gaze.csv or gaze_positions.csv file")
 
-    envMotion = VOAnalyzer(imuMatch)
+        # checking if timestamp.csv exists
+        if not  'world_timestamps.csv' in subFiles: raise Exception("Could not find the world_timestamps.csv file")
+        timestampPath = directory+'/world_timestamps.csv'
 
-    visual.gazeCoordsPlotSave(gazeMatch)
+        #read timestamps file
+        tempRead = np.genfromtxt(timestampPath, delimiter=',')
+
+        if CLOUD_FORMAT:
+            timestamps = tempRead[1:, 2]
+        else:
+            timestamps = tempRead[1:, 0]
+
+        #read gaze files
+        tempRead = np.genfromtxt(gazePath, delimiter=',')
+
+        if ~CLOUD_FORMAT:
+            gazes = tempRead[1:,[3,4]]
+            #the corrdinate origin is bottom left
+            gazes[:,1] = 1 - gazes[:,1]
+            gazes = gazes * [VIDEO_SIZE[1], VIDEO_SIZE[0]]
+            # tempGazeX = gazes[:,0]
+            # tempGazeY = gazes[:,1]
+            # gazes = np.column_stack((tempGazeY, tempGazeX))
+        else:
+            gazes = tempRead[1:, 2:]
+
+        T = tempRead[1:, 0]
+
+        # check if imu data exists.
+        # if not path.exists(INP_DIR+'/imu_data.csv'): raise Exception("Could not find the imu_data.csv file")
+        # imuPath = INP_DIR+'/imu_data.csv'
+
+        # imu = np.genfromtxt(imuPath, delimiter=',') #read the imu signal
+        # imu = imu[1:, :]
+        # imu = np.delete(imu, 1,1)
+
+        frames = tempRead[1:, 1]
+        frames -= np.min(frames)
+
+        frames, indcs = np.unique(frames, return_index=True)
+
+        gazeMatch = gazes[indcs]
+        TMatch = T[indcs]
+
+        # imuMatch = np.array(timeMatcher(timestamps, imu))
+        visod = np.loadtxt(join(directory, "visOdom.txt"), delimiter=' ')
+        headRot = visod[:,5]
+        bodyMotion = visod[:,1:3]
+
+        if not path.exists(join(directory, 'patchDists.csv')): 
+            patchDists = patchNet_predAll(vidPath, gazeMatch, frames)
+            np.savetxt(join(directory, 'patchDists.csv'), patchDists, delimiter=',')
+        else:
+            patchDists = np.loadtxt(join(directory, 'patchDists.csv'), delimiter=',')
+
+        patchDists = np.transpose(np.array(patchDists))
+
+        np.savetxt(OUT_DIR + 'gazeMatch.csv', gazeMatch, delimiter=',')
+
+        feats,_ = preprocessor(gazes, patchDists, headRot, bodyMotion, T, TMatch, None, None)
+        
+        ds_x.append(feats)
+
+        break
 
 
 elif DATASET == "GiW":
@@ -344,18 +379,21 @@ elif DATASET == "GiW-selected":
 
         #temp delete gaze followings
         # rmInd = np.where(lbls==3)[0]
-        # lbls = np.delete(lbls, rmInd[5000:])
-        # feats = np.delete(feats, rmInd[5000:], axis=0)
+        # lbls = np.delete(lbls, rmInd)
+        # feats = np.delete(feats, rmInd, axis=0)
 
-        # #temp delete fixation
+        #temp delete fixation
         # rmInd = np.where(lbls==0)[0]
-        # lbls = np.delete(lbls, rmInd[4587:])
-        # feats = np.delete(feats, rmInd[4587:], axis=0)
+        # lbls = np.delete(lbls, rmInd)
+        # feats = np.delete(feats, rmInd, axis=0)
 
-        # # #temp delete fixation
-        # rmInd = np.where(lbls==2)[0]
-        # lbls = np.delete(lbls, rmInd[2500:])
-        # feats = np.delete(feats, rmInd[2500:], axis=0)
+        # #temp delete gaze p
+        # rmInd = np.where(lbls==1)[0]
+        # lbls = np.delete(lbls, rmInd)
+        # feats = np.delete(feats, rmInd, axis=0)
+
+        # lbls[lbls == 2] = 0
+        # lbls[lbls == 3] = 1
 
         print("number of fixations " + str(len(np.where(lbls==0)[0])) + ", saccades " + str(len(np.where(lbls==2)[0])) + ", gazeP " + str(len(np.where(lbls==1)[0])) + ", gazeF " + str(len(np.where(lbls==3)[0])))
         
@@ -364,10 +402,11 @@ elif DATASET == "GiW-selected":
         ds_x.append(feats)
         ds_y.append(lbls)
 
-        np.savetxt(OUT_DIR+'feats_p' + str(participantNum) + '_a' + str(activityNum) +  '.csv', feats, delimiter=',')
+        np.savetxt(OUT_DIR+'feats_p' + str(participantNum) + '_a' + str(activityNum)+ '_l' + str(LABELER) +  '.csv', feats, delimiter=',')
         np.savetxt(OUT_DIR+'lbls_p' + str(participantNum) + '_a' + str(activityNum) + '_l' + str(LABELER) +'.csv', lbls, delimiter=',')
-        # np.savetxt(OUT_DIR+'frames.csv', frames, delimiter=',')
-        print("Data successfully loaded for participant " + str(participantNum))
+        np.savetxt(OUT_DIR+'frames_p' + str(participantNum) + '_a' + str(activityNum) +  '.csv', frames, delimiter=',')
+        np.savetxt(OUT_DIR+'gazes_p' + str(participantNum) + '_a' + str(activityNum) +  '.csv', gazeMatch, delimiter=',')
+        print("Data successfully loaded for participant " + str(participantNum) + " task: " + str(activityNum))
     
 
 ###### ANALYSIS
@@ -382,8 +421,24 @@ elif DATASET == "GiW-selected":
 
 ds_x, ds_y = data_balancer(ds_x, ds_y)
 
+f1s_sample = []
+f1s_event = []
+for p in range(1, len(ds_y)):
+
+    x_test = ds_x[p]
+    y_test =  ds_y[p]
+    x_train = np.array(ds_x)
+    x_train = np.delete(ds_x, p, 0)
+    y_train = np.array(ds_y)
+    y_train = np.delete(ds_y, p, 0)
+    f1_ie, f1_is = NEED_TrainAndTest(x_train, y_train, x_test, y_test)
+    f1s_sample.append(f1_ie)
+    f1s_event.append(f1_is)
+
 # feats,lbls = preprocessor(gazes, patchDists, headRot, T, TMatch, labels, lblMatch)
-ds_x = np.array(ds_x, dtype=object); ds_y = np.array(ds_y, dtype=object)
+ds_x = np.array(ds_x, dtype=object); 
+
+if ds_y: ds_y = np.array(ds_y, dtype=object)
 
 # pred_RF(ds_x, ds_y)
 
@@ -391,12 +446,12 @@ ds_x = np.array(ds_x, dtype=object); ds_y = np.array(ds_y, dtype=object)
 
 
 
-
-# data_balancer(ds_x, ds_y)
-
 train_RF(ds_x, ds_y)
+# 
+preds = pred_RF(ds_x, ds_y)
 
-pred_RF(ds_x)
+
+np.savetxt(OUT_DIR + 'events.csv', preds, delimiter=',')
 
 
 

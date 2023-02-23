@@ -8,7 +8,10 @@ from sklearn.ensemble import RandomForestClassifier
 from modules.decisionMaker import print_scores as print_scores
 from sklearn.model_selection import train_test_split
 from modules.preprocess import data_stats
-
+from modules.scorer import score
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn import metrics
+import matplotlib.pyplot as plt
 import torch
 import pickle
 
@@ -24,25 +27,27 @@ def eventDetector_new(feats, lbls):
     lbls = np.squeeze(lbls)
     lbls = np.concatenate(lbls)
 
+    # undersample = RandomUnderSampler(sampling_strategy='auto')
+    # feats, lbls = undersample.fit_resample(feats, lbls)
+
 
     data_stats(lbls)
 
-    # data_stats(lbls)
-    # lbls[rmInd] = 1
-    # lbls = np.delete(lbls, rmInd[:8000])
-    # feats = np.delete(feats, rmInd[:8000], axis=0)
-    # indices = np.random.permutation(np.random.rand(data_len, 1))
-    # divider_idx = int(test_ratio*data_len)
-    # training_idx, test_idx = indices[divider_idx:], indices[:divider_idx]
 
     X_train, X_test, y_train, y_test = train_test_split(feats, lbls, test_size=0.2, random_state=42)
 
 
-    clf = RandomForestClassifier(random_state=0, criterion='gini', n_estimators=40)
+    clf = RandomForestClassifier(random_state=0, criterion='gini', n_estimators=300, max_features= 'log2', min_samples_leaf=1, max_depth=50, min_samples_split=2, bootstrap=False)
     clf.fit(X_train, y_train)
     preds = clf.predict(X_test)
+
+   
+    f1_e, f1_s = score(preds, y_test)
+
+    return f1_e, f1_s
+
     preds = torch.from_numpy(preds)
-    lbls = torch.from_numpy(y_test)
+    lbls = torch.from_numpy(y_test)    
     print_scores(preds, lbls, 0, 'RF')
 
     pickle.dump(clf, open(OUT_DIR+'/models/RF.sav', 'wb'))
@@ -138,18 +143,25 @@ def eventDetector_new(feats, lbls):
 
 def pred_detector(feats, lbls):
 
+    if len([feats.size]) > 1:
+        feats = np.concatenate(feats)
     feats = np.squeeze(feats)
-    feats = np.concatenate(feats)
-    lbls = np.squeeze(lbls)
-    lbls = np.concatenate(lbls)
+    
+    if lbls:
+        lbls = np.squeeze(lbls)
+        lbls = np.concatenate(lbls)
 
-    clf = pickle.load(open(OUT_DIR+'/models/RF.sav', 'rb'))
+
+    clf = pickle.load(open(OUT_DIR+'/models/RF_lbl6_ID&BC_dc.sav', 'rb'))
     preds = clf.predict(feats)
 
-    preds = torch.from_numpy(preds)
-    lbls = torch.from_numpy(lbls)
+    
+    if lbls: 
+        preds = torch.from_numpy(preds)
+        lbls = torch.from_numpy(lbls)
+        
 
-    print_scores(preds, lbls, 0, 'RF')
+    if lbls: print_scores(preds, lbls, 0, 'RF')
 
     return preds
 
@@ -242,3 +254,24 @@ def  eventDetector(patchSim, gazeDists, orientChange, lbls):
     return decisions
 
     
+def trainAndTest(x_train, y_train, x_test, y_test):
+    x_train = np.squeeze(x_train)
+    x_train = np.concatenate(x_train)
+
+    y_train = np.squeeze(y_train)
+    y_train = np.concatenate(y_train)
+
+    x_test = np.squeeze(x_test)
+
+    y_test = np.squeeze(y_test)
+
+
+    clf = RandomForestClassifier(random_state=0, criterion='gini', n_estimators=300, max_features= 'log2', min_samples_leaf=1, max_depth=50, min_samples_split=2, bootstrap=False)
+    clf.fit(x_train, y_train)
+    preds = clf.predict(x_test)
+
+    f1_e, f1_s = score(preds, y_test)
+
+    return f1_e, f1_s
+
+
