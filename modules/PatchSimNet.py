@@ -1,3 +1,4 @@
+import imp
 import os
 import sys
 import argparse
@@ -13,6 +14,10 @@ from sklearn import metrics
 from scipy import interpolate
 from torch.backends import cudnn
 from urllib3 import Retry
+import cv2 as cv
+from modules.patchExtractor import patchExtractor
+from scipy.spatial import distance
+from config import PATCH_SIZE, PATCH_PRIOR_STEPS, LAMBDA
 
 CUDA_ID = '0'
 model = '2ch2stream'
@@ -92,10 +97,92 @@ def create_network():
 
 
 def perdict(input, params):
-    
 
     y = model(torch.from_numpy(input).float().to(device), params)
 
     return y
 
 
+def pred_all(vidDir, gazes, target_frames):
+    f = 0 # video frame counter
+    t = 1 
+    cap = cv.VideoCapture(cv.samples.findFile(vidDir)) #prepare the target video
+
+    print("computing the gaze patch similarities")
+    while(1):
+
+        ret, frame = cap.read()
+
+        print("skipped " + str(f))
+
+        if (not ret) or (t==(len(gazes)-1)):
+            print('Patch similarities computed successfully!')
+            break
+
+        # print("skipped " + str(f))
+
+        if f < (target_frames[t]-2): # -1 because python starts counting from zero but frames start from 1
+            f += 1
+            continue
+        else:
+            break
+
+    
+    prvFrame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)   #color conversion to grayscale
+    # prvPatch = patchExtractor(prvFrame, gazes[0][1:])
+    prvPatch = patchExtractor(prvFrame, gazes[0])
+    patchSimNet_params = create_network()
+    dists = []
+    normDists = []
+    while(1):
+
+        ret, frame2 = cap.read()
+
+        if (not ret) or (t==(len(target_frames))):
+            print('Patch similarities computed successfully!')
+            break
+        
+        nxtFrame = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+        nxtPatch = patchExtractor(nxtFrame, gazes[t])
+        
+        print(f)
+        # if f < target_frames[t]:
+        #     prvPatch = nxtPatch
+        #     prvFrame = nxtFrame
+        #     f += 1
+        #     continue
+
+
+        
+        inp = np.zeros((2, PATCH_SIZE, PATCH_SIZE))
+        if ((prvPatch.shape[0] == 0) or (prvPatch.shape[1] == 0) or (nxtPatch.shape[0] == 0) or (nxtPatch.shape[1] == 0)):
+            dists.append(0)
+            normDists.append(0)  #TODO handle fault
+            f = f+1
+            t += 1
+            print(f)
+            prvPatch = nxtPatch
+            prvFrame = nxtFrame
+            continue
+        # else:
+        
+        
+        # cv.imshow('grayscale image', prvPatch)
+
+            
+        inp[0,:,:] = cv.resize(prvPatch, (64,64))
+        inp[1,:,:] = cv.resize(nxtPatch, (64,64))
+        patchDist = perdict(inp, patchSimNet_params)
+        dists.append(patchDist.item())
+        pastPatchDist = np.sum(dists[-PATCH_PRIOR_STEPS:])
+        patchDistAvg = ((1-LAMBDA)*patchDist.item() + LAMBDA*(pastPatchDist/PATCH_PRIOR_STEPS))
+        normDists.append(patchDistAvg)
+
+        f = f+1
+        t += 1
+        print(f)
+        prvPatch = nxtPatch
+        prvFrame = nxtFrame
+    
+    print("Finished!")
+    return normDists

@@ -1,10 +1,13 @@
 import cv2 as cv
+from matplotlib.pyplot import axis
 import numpy as np
 from modules.patchExtractor import patchExtractor
 
 from config import PRE_OPFLOW, INP_DIR,VIDEO_SIZE
 
 def cosine_similarity (a,b):
+    if np.dot(a, b) == 0:
+        return 0
     return np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b))
 
 def opticalFlow_old(frame1, frame2):
@@ -113,14 +116,23 @@ def OFAnalyzer(frameNum, gazeCoord1, gazeCoord2):
 
 
 
-def VOAnalyzer(i):
+def VOAnalyzer(returnDist=False):
     #TODO: connect DF-VO here
     #reading DFVO results for now
 
-    visod = np.loadtxt(INP_DIR+"/visod.txt", delimiter=' ')
-    orient_dist = cosine_similarity(visod[i, 4:7], visod[i-1, 4:7])
+    visod = np.loadtxt(INP_DIR+"1/1/visOdom.txt", delimiter=' ')
+    # orient_dist = cosine_similarity(visod[i, 4:7], visod[i-1, 4:7])
+
+    if returnDist:
+        # orients = np.sum(np.abs(visod[:-1,4:7] - visod[1:, 4:7]), axis=1)
+        # 2*atan2(norm({q1,q2,q3}),
+        orients = 2*np.arctan(np.linalg.norm(visod[:, 4:7], axis=1))
+    else:
+        # orients = np.column_stack((visod[:-1,4:7], visod[1:, 4:7]))
+        orients = visod[:,4:7]
+
     # orient_dist = np.linalg.norm(visod[i, 4:7])
-    return orient_dist
+    return orients
 
     
 
