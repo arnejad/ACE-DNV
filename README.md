@@ -9,7 +9,7 @@ The natural eye-movement event detection (NEED) method computes the motion in ga
 
 ![events](./figs/events.jpg)
 
-The a
+
 ## Execution
 The code has been executed and tested on UBUNTU 18.06. 
 For running the code you need:
@@ -23,6 +23,11 @@ For running the code you need:
 To execute the code, edit the `config.py` file and select your dataset and input directory and the rest of params. The exectute 'main.py'.
 
 ## Citing Us
+In case of using this code in your research or project please cite the paper below:
+
+```
+Citation will be provided
+```
 
 
 ## Remark and Acknowledgement
@@ -35,3 +40,6 @@ Parts of this repository are extracted from other repositories provided publicly
 2. https://github.com/Huangying-Zhan/DF-VO
 3. https://github.com/szagoruyko/cvpr15deepcompare
 
+
+
+![visio logo](./figs/visio.png | width=100) ![umcg logo](./figs/umcg.png | width=100)  ![eu flag](./figs/eu_flag.jpg | width=100) ![rug logo](./figs/rug.png | width=100) ![optivist logo](./figs/optivist.png | width=100) 
