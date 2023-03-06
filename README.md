@@ -42,4 +42,5 @@ Parts of this repository are extracted from other repositories provided publicly
 
 
 
-![visio logo](./figs/visio.png | width=100) ![umcg logo](./figs/umcg.png | width=100)  ![eu flag](./figs/eu_flag.jpg | width=100) ![rug logo](./figs/rug.png | width=100) ![optivist logo](./figs/optivist.png | width=100) 
+![visio logo](./figs/visio.png | width=100) 
+![umcg logo](./figs/umcg.png | width=100)  ![eu flag](./figs/eu_flag.jpg | width=100) ![rug logo](./figs/rug.png | width=100) ![optivist logo](./figs/optivist.png | width=100) 
