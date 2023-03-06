@@ -42,5 +42,5 @@ Parts of this repository are extracted from other repositories provided publicly
 
 
 
-![visio logo](./figs/visio.png | width=100) 
+![visio logo](./figs/visio.png) 
 
