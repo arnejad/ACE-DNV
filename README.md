@@ -35,7 +35,7 @@ This code has been developed at the department of Research and Improvement of Ca
 
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie grant agreement No 955590.
 
-Parts of this repository are extracted from other repositories provided publicly by their authors. We would like to thank the all of researchers who helped us by providing the impelementation of their work to the public:
+We would like to thank all of the researchers who helped us by providing the impelementation of their work to the public:
 1. https://github.com/elmadjian/OEMC
 2. https://github.com/Huangying-Zhan/DF-VO
 3. https://github.com/szagoruyko/cvpr15deepcompare
