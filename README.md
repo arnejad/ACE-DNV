@@ -42,5 +42,5 @@ Parts of this repository are extracted from other repositories provided publicly
 
 
 
-<img src="./figs/visio.png" height="100"> <img src="./figs/umcg.png" height="100"> <img src="./figs/eu_flag.jpg" height="100"> <img src="./figs/rug.png" height="100"> <img src="./figs/optivist.png" height="100">
+<img src="./figs/visio.png" height="60"> <img src="./figs/umcg.png" height="60"> <img src="./figs/eu_flag.jpg" height="60"> <img src="./figs/rug.png" height="60"> <img src="./figs/optivist.png" height="60">
 
