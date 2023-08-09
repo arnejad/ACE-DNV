@@ -5,7 +5,7 @@ we introduce a natural viewing eye-movement event classification method that tak
 
 ![architecture](./figs/arch.png)
 
-The natural eye-movement event detection (NEED) method computes the motion in gaze and head in conjunction with similarity of content in the central visual field and feeds them as input to a classification algorithm to detect gaze fixation, gaze following, gaze pursuit, and gaze shift.
+Automatic Classification of Gaze Events in Dynamic Natural Viewing (ACE-DNV) method computes the motion in gaze and head in conjunction with similarity of content in the central visual field and feeds them as input to a classification algorithm to detect gaze fixation, gaze following, gaze pursuit, and gaze shift.
 
 ![events](./figs/events.jpg)
 
@@ -35,7 +35,7 @@ This code has been developed at the department of Research and Improvement of Ca
 
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie grant agreement No 955590.
 
-We would like to thank all of the researchers who helped us by providing the impelementation of their work to the public:
+We would like to thank the researchers who helped us by providing the impelementation of their work publicly. Parts of this code is extracted from these repositories. Those files start with a commented link to the original repo:
 1. https://github.com/elmadjian/OEMC
 2. https://github.com/Huangying-Zhan/DF-VO
 3. https://github.com/szagoruyko/cvpr15deepcompare
