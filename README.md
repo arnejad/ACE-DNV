@@ -20,6 +20,7 @@ For running the code you need:
 4. 2ch2stream Network (included in repo)
 5. (OPTIONAL) MATLAB for some data inspection scripts
 
+Executation of DF-VO for now should be done seporately. The output of DF-VO should be stored in the recording folder along. Please note that you will need the camera matrix for the visual odometry.
 To execute the code, edit the `config.py` file and select your dataset and input directory and the rest of params. The exectute 'main.py'.
 
 ## Citing Us
