@@ -1,4 +1,4 @@
-# NEEC: Automatic Natural Eye-movement Event Classification in Dynamic Viewing Experiments
+# ACE-DNV: Automatic Classification of Gaze Events in Dynamic Natural Viewing
 
 ## Introduction
 we introduce a natural viewing eye-movement event detection method that takes head and body motion into account only relying on the scene camera and gaze signal which are provided by a mobile eye-trackers.
