@@ -1,7 +1,7 @@
 # ACE-DNV: Automatic Classification of Gaze Events in Dynamic Natural Viewing
 
 ## Introduction
-we introduce a natural viewing eye-movement event detection method that takes head and body motion into account only relying on the scene camera and gaze signal which are provided by a mobile eye-trackers.
+we introduce a natural viewing eye-movement event classification method that takes head and body motion into account only relying on the scene camera and gaze signal which are provided by a mobile eye-trackers.
 
 ![architecture](./figs/arch.png)
 
@@ -11,7 +11,7 @@ The natural eye-movement event detection (NEED) method computes the motion in ga
 
 
 ## Execution
-The code has been executed and tested on UBUNTU 18.06. 
+The code is tested on UBUNTU 18.06. 
 For running the code you need:
 
 1. PyTorch
