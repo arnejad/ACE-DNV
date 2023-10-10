@@ -27,21 +27,21 @@ def count_event(preds, gt):
 
 
 def print_results(sample_preds, sample_gt, event_preds, event_gt):
-    # target_names = ["Fixation", "Gaze Pursuit", "Gaze Shift", "Gaze Following"]
+    target_names = ["Fixation", "Gaze Pursuit", "Gaze Shift", "Gaze Following"]
     # target_names = ["Fixation", "Gaze Pursuit", "Gaze Shift"]
-    target_names = [ "Gaze Shift", "Gaze Following"]
+    # target_names = [ "Gaze Shift", "Gaze Following"]
 
     print('SAMPLE-LEVEL metrics\n===================')
     print(metrics.classification_report(sample_gt, sample_preds, digits=4))
     f1_ss = metrics.classification_report(sample_gt, sample_preds, digits=4, output_dict=True)
-    # metrics.ConfusionMatrixDisplay.from_predictions(sample_gt, 
-    #                         sample_preds, display_labels=target_names, 
-    #                         cmap='Purples', normalize='pred', values_format='.2f')
+    metrics.ConfusionMatrixDisplay.from_predictions(sample_gt, 
+                            sample_preds, display_labels=target_names, 
+                            cmap='Purples', normalize='pred', values_format='.2f')
     print('EVENT-LEVEL metrics\n===================')
     print(metrics.classification_report(event_gt, event_preds, digits=4))
-    # metrics.ConfusionMatrixDisplay.from_predictions(event_gt,
-    #                         event_preds, display_labels=target_names, 
-    #                         normalize='pred', cmap='Greens', values_format='.2f')
+    metrics.ConfusionMatrixDisplay.from_predictions(event_gt,
+                            event_preds, display_labels=target_names, 
+                            normalize='pred', cmap='Greens', values_format='.2f')
     # plt.show()
     f1_se = metrics.classification_report(event_gt, event_preds, digits=4, output_dict=True)
 

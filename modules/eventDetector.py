@@ -14,6 +14,8 @@ from sklearn import metrics
 import matplotlib.pyplot as plt
 import torch
 import pickle
+from random import randrange
+
 
 
 from config import PATCH_SIM_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH, PATCH_SIZE, LAMBDA, PATCH_PRIOR_STEPS, OUT_DIR
@@ -21,21 +23,41 @@ from config import PATCH_SIM_THRESH, GAZE_DIST_THRESH, ENV_CHANGE_THRESH, PATCH_
 def eventDetector_new(feats, lbls):
 
 
+    # chunk random division
+    X_train = []
+    Y_train = []
+    X_test = []
+    Y_test = []
+    for i in range(feats.size):
+        randStart = randrange(int(0.8*rec.size))
+        rec = feats[i]
+        lbl = lbls[i]
+        recLen = int(0.2*rec.size)
+
+        # features
+        X_test.append(rec[randStart: (randStart+recLen)]) # add 20% lenght chuck to test
+        rec = np.delete(rec, np.arange(randStart, (randStart+recLen)))  # delete the test chunk
+        X_train.append(rec) # append the 80% rest for the training the train set
+
+        # labels
+        Y_test.append(lbl[randStart: (randStart+recLen)]) # add 20% lenght chuck to test
+        rec = np.delete(lbl, np.arange(randStart, (randStart+recLen)))  # delete the test chunk
+        Y_train.append(lbl) # append the 80% rest for the training the train set
+
+
+
+
+    #sample-level random split
+    X_train, X_test, y_train, y_test = train_test_split(feats, lbls, test_size=0.2, random_state=42)
+    
+
     feats = np.squeeze(feats)
     feats = np.concatenate(feats)
 
     lbls = np.squeeze(lbls)
     lbls = np.concatenate(lbls)
-
-    # undersample = RandomUnderSampler(sampling_strategy='auto')
-    # feats, lbls = undersample.fit_resample(feats, lbls)
-
-
+    
     data_stats(lbls)
-
-
-    X_train, X_test, y_train, y_test = train_test_split(feats, lbls, test_size=0.2, random_state=42)
-
 
     clf = RandomForestClassifier(random_state=0, criterion='gini', n_estimators=300, max_features= 'log2', min_samples_leaf=1, max_depth=50, min_samples_split=2, bootstrap=False)
     clf.fit(X_train, y_train)
@@ -141,27 +163,29 @@ def eventDetector_new(feats, lbls):
         decisions.append(decision)
 
 
-def pred_detector(feats, lbls):
+def pred_detector(feats, lbls, modelDir):
 
-    if len([feats.size]) > 1:
-        feats = np.concatenate(feats)
+    # if len([feats.size]) > 1:
+    feats = np.concatenate(feats)
     feats = np.squeeze(feats)
     
-    if lbls:
-        lbls = np.squeeze(lbls)
-        lbls = np.concatenate(lbls)
+   
+    lbls = np.squeeze(lbls)
+    lbls = np.concatenate(lbls)
 
 
-    clf = pickle.load(open(OUT_DIR+'/models/RF_lbl6_ID&BC_dc.sav', 'rb'))
+    clf = pickle.load(open(modelDir, 'rb'))
     preds = clf.predict(feats)
 
     
-    if lbls: 
-        preds = torch.from_numpy(preds)
-        lbls = torch.from_numpy(lbls)
+    # if lbls: 
+    preds = torch.from_numpy(preds)
+    lbls = torch.from_numpy(lbls)
         
 
-    if lbls: print_scores(preds, lbls, 0, 'RF')
+    # if lbls: 
+    # print_scores(preds, lbls, 0, 'RF')
+    score(preds, lbls)
 
     return preds
 

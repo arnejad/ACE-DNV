@@ -15,7 +15,7 @@ from modules.wildMove import VOAnalyzer
 from modules.timeMatcher import timeMatcher
 import modules.visualizer as visual
 from modules.PatchSimNet import pred_all as patchNet_predAll
-from NEED import train as NEED_train
+# from NEED import train as NEED_train
 from config import INP_DIR, OUT_DIR, VISUALIZE, VIDEO_SIZE, CLOUD_FORMAT, DATASET, ACTIVITY_NUM, ACIVITY_NAMES, LABELER
 from modules.eventDetector import eventDetector_new as train_RF
 from modules.eventDetector import pred_detector as pred_RF
@@ -277,7 +277,7 @@ elif DATASET == "GiW-selected":
     ds_x = []
     ds_y = []
 
-    rec_list = np.loadtxt(INP_DIR +'files.txt', delimiter=',', dtype='str')
+    rec_list = np.loadtxt(INP_DIR +'files_lblr5.txt', delimiter=',', dtype='str')
 
     for p in range(len(rec_list)):  #change into read all samples TODO
     # for p in range(2):
@@ -421,135 +421,18 @@ elif DATASET == "GiW-selected":
 
 ds_x, ds_y = data_balancer(ds_x, ds_y)
 
-f1s_sample = []
-f1s_event = []
-for p in range(1, len(ds_y)):
-
-    x_test = ds_x[p]
-    y_test =  ds_y[p]
-    x_train = np.array(ds_x)
-    x_train = np.delete(ds_x, p, 0)
-    y_train = np.array(ds_y)
-    y_train = np.delete(ds_y, p, 0)
-    f1_ie, f1_is = NEED_TrainAndTest(x_train, y_train, x_test, y_test)
-    f1s_sample.append(f1_ie)
-    f1s_event.append(f1_is)
-
-# feats,lbls = preprocessor(gazes, patchDists, headRot, T, TMatch, labels, lblMatch)
 ds_x = np.array(ds_x, dtype=object); 
 
 if ds_y: ds_y = np.array(ds_y, dtype=object)
 
-# pred_RF(ds_x, ds_y)
-
-# data_stats(ds_y)
-
-
 
 train_RF(ds_x, ds_y)
-# 
-preds = pred_RF(ds_x, ds_y)
 
 
-np.savetxt(OUT_DIR + 'events.csv', preds, delimiter=',')
+# for prediction using saved model
+# preds = pred_RF(ds_x, ds_y, OUT_DIR+'/models/RF_lblr6.sav')
 
 
+#saving predictions
+# np.savetxt(OUT_DIR + 'events.csv', preds, delimiter=',')
 
-# run_need(ds_x, ds_y)
-
-
-# get environment changes
-
-lblSet = labels #sample-based
-
-rmidcs_nans = np.where(lblSet == 0)
-
-
-# remove blinks
-rmidcs_blinks = np.where(lblSet == 4)
-
-rmidcs = np.concatenate((rmidcs_nans, rmidcs_blinks), axis=1)
-
-################### ML method feature creation
-
-# featSet = np.column_stack((patchDists[:-1], gazes, headRot[:-1,:]))
-featSet = np.column_stack((patchDists, gazeMatch[:-1,:], headRot))
-
-lblSet = np.delete(lblSet, rmidcs)
-featSet = np.delete(featSet, rmidcs,0)
-frames = np.delete(frames, rmidcs)
-
-
-
-np.savetxt(OUT_DIR+'feats.csv', featSet, delimiter=',')
-np.savetxt(OUT_DIR+'lbls.csv', featSet, delimiter=',')
-np.savetxt(OUT_DIR+'frames.csv', frames, delimiter=',')
-
-
-# rmidcs_sac = np.where(lblSet == 3)
-
-# lblSet = np.delete(lblSet, rmidcs_sac)
-# featSet = np.delete(featSet, rmidcs_sac,0)
-
-
-
-# plt.hist(lblSet, bins=np.arange(6))
-# plt.show()
-res = run_need(featSet, lblSet)
-
-
-res, gts = NEED_train(featSet, lblSet)
-
-
-####################### Rule-based
-
-
-
-gazeMatch = gazeMatch + np.abs(np.min(gazeMatch, axis=0))
-gazeDists = np.linalg.norm(gazeMatch[:-1] - gazeMatch[1:], axis=1) #compute the gaze location change
-gazeDists = ndimage.median_filter(gazeDists, size=10)
-
-lblSet = np.delete(lblSet, rmidcs)
-gazeDists = np.delete(gazeDists, rmidcs)
-patchDists = np.delete(patchDists, rmidcs)
-headRot = np.delete(headRot, rmidcs)
-
-
-# visual.knowledgePanel_update(axs, None, np.column_stack((patchDists[:-1], gazeDists, headRot[:-1])))
-# fig.show()
-
-
-res = train_RF(patchDists, gazeDists,headRot, lblSet)
-
-matches = len(np.where(res == np.transpose(lblSet)[0])[0])
-print(matches/len(lblSet))
-
-np.savetxt(OUT_DIR+'res.csv', res, delimiter=',')
-
-# us, iss = np.unique(labels, return_index=True)
-
-
-
-print(matches)
-# Pass the extracted knowledge to make the final desicion
-
-#knowledge panel visualization
-# if VISUALIZE:
-#     if (min(nxtPatch.shape)>0):
-#         visual.knowledgePanel_update(axs, nxtPatch, finalRes[:,1:])
-#         plt.pause(0.0000001)
-
-#     # Press Q on keyboard to  exit
-#     if cv.waitKey(25) & 0xFF == ord('q'):
-#         break
-    
-# finalEvents = postprocess(finalEvents)
-# cap.release()
-# cv.destroyAllWindows()
-
-# f = open(OUT_DIR+'res.csv', 'w')
-# writer = csv.writer(f)
-# writer.writerow(finalEvents)
-# f.close()
-
-# np.savetxt(OUT_DIR+'gazeMatch.csv', gazeMatch, delimiter=',')
