@@ -1,0 +1,8 @@
+1,1,Indoor_Walk
+2,1,Indoor_Walk
+17,1,Indoor_Walk
+8,1,Indoor_Walk
+22,1,Indoor_Walk
+18,1,Indoor_Walk
+3,1,Indoor_Walk
+6,1,Indoor_Walk
