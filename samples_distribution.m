@@ -8,11 +8,11 @@
 inp_dir = '/media/ashdev/Expansion/data/GiW';
 
 
-files = readtable(fullfile(inp_dir,'files.txt'));
+files = readtable(fullfile(inp_dir,'files_all_lblr6.txt'));
 
 activities = table2array(files(:,"Var3"));
 
-lblr = 5;
+lblr = 6;
 
 total_hists = zeros(1, 5);
 
@@ -34,4 +34,6 @@ end
 X = categorical({'Fixation','Gaze Pursuit','Saccade','Blink', 'Gaze following'});
 
 bar(X, total_hists)
+ylim([0 400000])
+
 

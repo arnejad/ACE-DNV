@@ -1,27 +1,15 @@
-import imp
 import os
-import sys
-import argparse
-from functools import partial
-from tqdm import tqdm
 import numpy as np
 import torch
-import torchfile
-from torchnet.dataset import ListDataset, ConcatDataset
 from torch.autograd import Variable
 import torch.nn.functional as F
-from sklearn import metrics
-from scipy import interpolate
-from torch.backends import cudnn
-from urllib3 import Retry
 import cv2 as cv
 from modules.patchExtractor import patchExtractor
-from scipy.spatial import distance
-from config import PATCH_SIZE, PATCH_PRIOR_STEPS, LAMBDA
+from config import PATCH_SIZE, PATCH_PRIOR_STEPS, LAMBDA, CH2STREAM_MODEL_DIR
 
 CUDA_ID = '0'
 model = '2ch2stream'
-lua_model = '/home/ashdev/projects/Zagoruyko/models/2ch2stream/2ch2stream_notredame.t7'
+lua_model = CH2STREAM_MODEL_DIR
 
 
 def conv2d(input, params, base, stride=1, padding=0):

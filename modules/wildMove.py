@@ -104,17 +104,6 @@ def OFAnalyzer(frameNum, gazeCoord1, gazeCoord2):
     return meanGazeFlow, portion
     
 
-    # atten_uv = goWithTheFlow(flow_u, flow_v, gazeCoord2)
-    # return atten_uv, 
-
-
-    
-    # bg_uv
-
-    gaze_atten_sim = cosine_similarity(gazeCoord2-gazeCoord1, atten_uv)
-    gaze_bg_sim = cosine_similarity(gazeCoord2-gazeCoord1, bg_uv)
-
-
 
 def VOAnalyzer(returnDist=False):
     #TODO: connect DF-VO here

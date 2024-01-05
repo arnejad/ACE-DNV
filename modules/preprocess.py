@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.ndimage import median_filter
 import matplotlib.pyplot as plt
+import random
 
 
 from config import ET_FREQ
@@ -158,7 +158,7 @@ def interpolate(signal, current_t, target_t):
         for d in range (signal.shape[1]):
             f = interp1d(current_t, signal[:,d], kind='cubic')
             ynew_col = f(target_t)
-            if ynew==[]:
+            if len(ynew) == 0:
                 ynew = ynew_col
             else:
                 ynew= np.column_stack((ynew, ynew_col))
@@ -229,26 +229,16 @@ def preprocessor(gaze, patchSim, headRot, bodyLoc, gaze_t, frame_t, labels, lblM
         labels[labels == 3] = 2; lblMatch[lblMatch == 3] = 2; 
         # Gaze Following = 3 (originally 5)
         labels[labels == 5] = 3; lblMatch[lblMatch == 5] = 3; 
-
-
-
     
     # print("number of fixations " + str(len(np.where(labels==0)[0])) + ", saccades " + str(len(np.where(labels==2)[0])) + ", gazeP " + str(len(np.where(labels==1)[0])) + ", gazeF " + str(len(np.where(labels==3)[0])))
-
-
-    
-    
-
 
     # extract gaze features
     gaze_feat, labels_new = gazeFeatureExtractor(gaze, labels)
     
 
     # print("number of fixations " + str(len(np.where(labels==0)[0])) + ", saccades " + str(len(np.where(labels==2)[0])) + ", gazeP " + str(len(np.where(labels==1)[0])) + ", gazeF " + str(len(np.where(labels==3)[0])))
-    # 
-    # interpolate patch similarities and head rotations to the same sampling rate as gaze
 
-    
+    # interpolate patch similarities and head rotations to the same sampling rate as gaze    
 
     # none-gaze-related (body translation and head rotaion) feature extrtaction
     head_feats = extract_head_features_single(headRot)
@@ -265,8 +255,6 @@ def preprocessor(gaze, patchSim, headRot, bodyLoc, gaze_t, frame_t, labels, lblM
     body_feat = interpolate(body_feat, betweenFrame_t, gaze_t)
     new_patchSim = interpolate(patchSim, betweenFrame_t, gaze_t)
 
-    
-    
 
     # final_feats = np.concatenate((gaze_feat, head_feats, np.transpose([new_patchSim[300:]])), axis=1)
     final_feats = np.column_stack((gaze_feat, head_feats, body_feat, np.transpose([new_patchSim])))
@@ -281,9 +269,6 @@ def data_stats(y):
 
     plt.hist(lbls, bins = 4)
     plt.show()
-
-
-# def balancer(x,y):
 
 
 
@@ -311,7 +296,6 @@ def data_balancer(x, y):
         #divide$&conqure resampling
         delection_counts = np.array(hists[:, c])
         goal_diff = all_counts[c] - min_count
-        # delection_counts = np.zeros(len(hists[:,0]))
 
         remain = min_count
         while True:
@@ -340,3 +324,57 @@ def data_balancer(x, y):
 
 
 
+def divider (X,Y):
+    # X_train = []
+    # Y_train = []
+    # X_test = []
+    # Y_test = []
+
+    # for i, rec in enumerate(X):
+    #     length = len(rec)
+    #     X_test.append(rec[:int(20*length/100)])
+    #     X_train.append(rec[int(20*length/100):])
+    #     Y_test.append(Y[i][:int(20*length/100)])
+    #     Y_train.append(Y[i][int(20*length/100):])
+    
+
+
+    # random chunk division
+    X_train = []
+    Y_train = []
+    X_test = []
+    Y_test = []
+    for i in range(X.size):
+        
+        rec = X[i]
+        lbl = Y[i]
+        randStart = random.randrange(int(0.8*rec.shape[0]))
+        recLen = int(0.2*rec.shape[0])
+
+        # features
+        X_test.append(rec[randStart: (randStart+recLen), :]) # add 20% lenght chuck to test
+        rec = np.delete(rec, np.arange(randStart, (randStart+recLen)), axis=0)  # delete the test chunk
+        X_train.append(rec) # append the 80% rest for the training the train set
+
+        # labels
+        Y_test.append(lbl[randStart: (randStart+recLen)]) # add 20% lenght chuck to test
+        lbl = np.delete(lbl, np.arange(randStart, (randStart+recLen)))  # delete the test chunk
+        Y_train.append(lbl) # append the 80% rest for the training the train set
+
+    X_train, X_test = np.asarray(X_train, dtype="object"), np.asarray(X_test, dtype="object")
+    Y_train, Y_test = np.asarray(Y_train, dtype="object"), np.asarray(Y_test, dtype="object")
+
+    # X_test = np.squeeze(X_test)
+    # X_test = np.concatenate(X_test)
+
+    # X_train = np.squeeze(X_train)
+    # X_train = np.concatenate(X_train)
+
+    # Y_test = np.squeeze(Y_test)
+    # Y_test = np.concatenate(Y_test)
+
+    # Y_train = np.squeeze(Y_train)
+    # Y_train = np.concatenate(Y_train)
+
+    
+    return X_train, Y_train, X_test, Y_test
