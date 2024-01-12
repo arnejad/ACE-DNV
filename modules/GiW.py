@@ -11,7 +11,7 @@
 
 
 import numpy as np
-from config import INP_DIR, OUT_DIR, RECS_LIST, LABELER
+from config import INP_DIR, OUT_DIR, RECS_LIST, GFiGFo_Comb, EXP
 import scipy.io
 from modules.PatchSimNet import pred_all as patchNet_predAll
 from os import path
@@ -29,6 +29,7 @@ def GiWPrep():
 
     for p in range(len(rec_list)): 
         
+        lblr = rec_list[p, 3] 
         activityName = rec_list[p, 2] 
         activityNum  = rec_list[p, 1]
         participantNum  = rec_list[p, 0]
@@ -42,7 +43,8 @@ def GiWPrep():
         
         # load the labels
         labels = scipy.io.loadmat(INP_DIR + '/Extracted_Data/' + activityName + '/Labels/' + \
-        'PrIdx_'+participantNum+'_TrIdx_' + str(activityNum) + '_Lbr_'+ str(LABELER) +'.mat')
+        'PrIdx_'+participantNum+'_TrIdx_' + str(activityNum) + '_Lbr_'+ str(lblr) +'.mat')
+
 
         labels = np.array(labels['LabelData']['Labels'][0])
         
@@ -122,15 +124,57 @@ def GiWPrep():
 
         patchDists = np.transpose(np.array(patchDists))
 
-        feats,lbls = preprocessor(gazes, patchDists, headRot, bodyMotion, T, TMatch, labels, lblMatch)
+        # feats,lbls = preprocessor(gazes, patchDists, headRot, bodyMotion, T, TMatch, labels, lblMatch)
 
-        print("number of fixations " + str(len(np.where(lbls==0)[0])) + ", saccades " + str(len(np.where(lbls==2)[0])) + ", gazeP " + str(len(np.where(lbls==1)[0])) + ", gazeF " + str(len(np.where(lbls==3)[0])))
         
+        feats,lbls = preprocessor(gazes, patchDists, headRot, bodyMotion, T, TMatch, labels, lblMatch)
+        
+        print("number of fixations " + str(len(np.where(lbls==0)[0])) + ", saccades " + str(len(np.where(lbls==2)[0])) + ", gazeP " + str(len(np.where(lbls==1)[0])) + ", gazeF " + str(len(np.where(lbls==3)[0])))
+
+        if EXP=="2-2":
+            lbls[np.where(lbls==3)] = 0
+        # elif True:
+        #     rmIndcs1 = np.where(lbls==0)[0]
+        #     rmIndcs2 = np.where(lbls==3)[0]
+        #     lbls = np.delete(lbls, np.comcatenate((rmIndcs1, rmIndcs2)))
+        #     feats = np.delete(feats, rmIndcs, axis=0)
+        #     lbls[np.where(lbls==3)] = 1
+            
+        # temp delete gaze followings
+        # rmInd = np.where(lbls==3)[0]
+        # lbls = np.delete(lbls, rmInd)
+        # feats = np.delete(feats, rmInd, axis=0)
+
+        # some tasks do not contain some labels. But you might see that few of them exist with 
+            #mislabeling. So here, we clean them so that it would not cause fault in ML classifer
+        if (EXP =="1-1" or EXP =="1-3"):
+            # temp delete fixation
+            rmInd = np.where(lbls==0)[0]
+            lbls = np.delete(lbls, rmInd)
+            feats = np.delete(feats, rmInd, axis=0)
+
+        if (EXP =="1-1" or EXP =="1-3"):
+            #temp delete gaze p
+            rmInd = np.where(lbls==1)[0]
+            lbls = np.delete(lbls, rmInd)
+            feats = np.delete(feats, rmInd, axis=0)
+        if (EXP =="1-2"):
+            #temp delete GFo
+            rmInd = np.where(lbls==3)[0]
+            lbls = np.delete(lbls, rmInd)
+            feats = np.delete(feats, rmInd, axis=0)
+
+        if (EXP =="1-1" or EXP =="1-3"):
+            lbls[lbls == 2] = 0
+            lbls[lbls == 3] = 1
+            
+        # feats = np.sqrt(np.abs(feats))
+
         ds_x.append(feats)
         ds_y.append(lbls)
 
-        np.savetxt(OUT_DIR+'feats_p' + str(participantNum) + '_a' + str(activityNum)+ '_l' + str(LABELER) +  '.csv', feats, delimiter=',')
-        np.savetxt(OUT_DIR+'lbls_p' + str(participantNum) + '_a' + str(activityNum) + '_l' + str(LABELER) +'.csv', lbls, delimiter=',')
+        np.savetxt(OUT_DIR+'feats_p' + str(participantNum) + '_a' + str(activityNum)+ '_l' + str(lblr) +  '.csv', feats, delimiter=',')
+        np.savetxt(OUT_DIR+'lbls_p' + str(participantNum) + '_a' + str(activityNum) + '_l' + str(lblr) +'.csv', lbls, delimiter=',')
         np.savetxt(OUT_DIR+'frames_p' + str(participantNum) + '_a' + str(activityNum) +  '.csv', frames, delimiter=',')
         np.savetxt(OUT_DIR+'gazes_p' + str(participantNum) + '_a' + str(activityNum) +  '.csv', gazeMatch, delimiter=',')
         print("Data successfully loaded for participant " + str(participantNum) + " task: " + str(activityNum))

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from os import path, mkdir
 from config import OUT_DIR
-
+import numpy as np
 
 def knowledgePanel_init():  # opens and initialized the visualization configs for knowledge panel 
     plt.rcParams["figure.figsize"] = [19, 20]
@@ -36,3 +36,16 @@ def gazeCoordsPlotSave(gazes):
 
     plt.savefig(OUT_DIR+'/figs/gazeCoords.png')
     plt.close()
+
+def showFeatureHist(model):
+    features = ["G vel", "G dir", "HR vel", "HR dir", "B vel", "Patch sim"]
+    importances = model.feature_importances_
+    # indices = importances
+    # plt.title('Feature Importances')
+    fig1, ax1 = plt.subplots()
+    ax1.barh(range(len(importances)), importances, align='center')
+    ax1.invert_yaxis()
+    plt.yticks(range(len(features)), features)
+    plt.xlabel('Relative Importance')
+    plt.ylabel('Features')
+    plt.show()

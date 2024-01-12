@@ -6,7 +6,25 @@ import random
 
 from config import ET_FREQ
 
-# Functions in this file are extracted from work of Elmadjian et al. on https://github.com/elmadjian/OEMC
+# Some functions in this file for gaze feature computation are extracted from work of Elmadjian et al. on https://github.com/elmadjian/OEMC
+
+
+def eventFinder(Y):
+    events = []
+    i = 0
+    while i < len(Y):
+        g_0 = g_n = int(Y[i])
+        ini, end = i, i
+        while g_0 == g_n and i < len(Y):
+            g_n = int(Y[i])
+            end = i
+            if g_0 == g_n:
+                i += 1
+        if ini == end:
+            i += 1
+            continue
+        events.append([ini, end-1, g_0])
+    return np.array(events)
 
 def gazeFeatureExtractor(gaze, labels):
         '''
@@ -258,6 +276,7 @@ def preprocessor(gaze, patchSim, headRot, bodyLoc, gaze_t, frame_t, labels, lblM
 
     # final_feats = np.concatenate((gaze_feat, head_feats, np.transpose([new_patchSim[300:]])), axis=1)
     final_feats = np.column_stack((gaze_feat, head_feats, body_feat, np.transpose([new_patchSim])))
+    # final_feats = np.column_stack((gaze_feat))
 
     return final_feats, labels_new
 
@@ -272,7 +291,7 @@ def data_stats(y):
 
 
 
-def data_balancer(x, y):
+def data_balancer_nonRandom(x, y):
 
     tmp_y = np.squeeze(y)
     tmp_y = np.concatenate(tmp_y)
@@ -300,7 +319,7 @@ def data_balancer(x, y):
         remain = min_count
         while True:
 
-            record_extract_factor = np.round(remain / len(np.where(delection_counts > 0)[0]))
+            record_extract_factor = np.round(remain / (len(np.where(delection_counts > 0)[0])+0.0000001))
             # record_extract_factor = goal_diff
             delection_counts[np.where(delection_counts>0)] -= record_extract_factor
 
@@ -317,14 +336,67 @@ def data_balancer(x, y):
         for r in range(len(x)):  #each recordings
             count = hists[r, c]
             rmInd = np.where(y[r]==c)[0]
+            #leave borders
+            begBorders = np.where((rmInd[1:] - rmInd[:-1])>1)[0]
+            # endBorders = begBorders-1
+            # rmInd = np.delete(rmInd, np.concatenate((begBorders, endBorders), axis=0))
+            rmInd = np.delete(rmInd, begBorders, axis=0)
             y[r] = np.delete(y[r], rmInd[int(count):])
             x[r] = np.delete(x[r], rmInd[int(count):], axis=0)
 
     return x, y
 
 
+def data_balancer_Random(x, y):
 
-def divider (X,Y):
+    tmp_y = np.squeeze(y)
+    tmp_y = np.concatenate(tmp_y)
+    ulbls = np.unique(tmp_y)
+    hists = np.zeros((len(x), len(ulbls)))
+    
+    # for each recording
+    for r in range(len(x)):
+
+        # for each class
+        for c in range(0,len(ulbls)):
+            count_c = len(np.where(y[r]==c)[0])
+            hists[r, c] = count_c
+            
+    all_counts = np.sum(hists, axis=0)
+
+    min_count = np.min(all_counts)
+
+    goal_diffs = all_counts - min_count
+    goal_diffs_ratio = (goal_diffs / all_counts)
+
+    # for each recording
+    for r in range(len(x)):
+
+        # for each class
+        for c in range(0,len(ulbls)):
+            events = eventFinder(y[r])
+            event_lens = (events[:, 1] - events[:, 0])+1
+            rec_rm_is = []
+            for e in range(events.shape[0]):
+                start = events[e,0]
+                end = events[e,1]
+                lb = events[e,2]
+                leng = event_lens[e]
+                if goal_diffs_ratio[lb] == 0: continue
+                if leng < 3: continue
+                if int(np.round(leng*goal_diffs_ratio[lb])-1) < 0: continue
+                rm_is = random.sample(range(start, end), int(np.round(leng*goal_diffs_ratio[lb])-1))
+                rec_rm_is.append(rm_is)
+        rec_rm_is = np.concatenate(rec_rm_is).astype(int)
+        y[r] = np.delete(y[r], rec_rm_is)
+        x[r] = np.delete(x[r], rec_rm_is, axis=0)    
+
+    return x, y
+
+
+
+
+def divider_twoChunkSplit (X,Y):
     # X_train = []
     # Y_train = []
     # X_test = []
@@ -375,6 +447,115 @@ def divider (X,Y):
 
     # Y_train = np.squeeze(Y_train)
     # Y_train = np.concatenate(Y_train)
+
+    
+    return X_train, Y_train, X_test, Y_test
+
+
+
+def divider_randomInnerEventSplit (X,Y):
+    # X_train = []
+    # Y_train = []
+    # X_test = []
+    # Y_test = []
+
+    # for i, rec in enumerate(X):
+    #     length = len(rec)
+    #     X_test.append(rec[:int(20*length/100)])
+    #     X_train.append(rec[int(20*length/100):])
+    #     Y_test.append(Y[i][:int(20*length/100)])
+    #     Y_train.append(Y[i][int(20*length/100):])
+    
+
+    
+    # random chunk division
+    X_train = []
+    Y_train = []
+    X_test = []
+    Y_test = []
+    for i in range(X.size):
+        
+        rec = X[i]
+        lbl = Y[i]
+
+        events_borders = eventFinder(lbl)
+        event_lens = (events_borders[:, 1] - events_borders[:, 0])+1
+        extraction_lens = np.round((event_lens*20)/100)
+
+        test_isAll = []
+        for event in range(events_borders.shape[0]):
+            s = events_borders[event,0]
+            e = events_borders[event,1]+1
+            test_is = random.sample(range(s, e), int(extraction_lens[event]))
+
+            test_isAll.append(test_is)
+
+        test_isAll = np.concatenate(test_isAll).astype(int)
+        X_test.append(rec[test_isAll])
+        Y_test.append(lbl[test_isAll])
+        rec = np.delete(rec, test_isAll, axis=0)
+        lbl = np.delete(lbl, test_isAll, axis=0)
+        X_train.append(rec)
+        Y_train.append(lbl)
+
+    X_train, X_test = np.asarray(X_train, dtype="object"), np.asarray(X_test, dtype="object")
+    Y_train, Y_test = np.asarray(Y_train, dtype="object"), np.asarray(Y_test, dtype="object")
+
+
+    
+    return X_train, Y_train, X_test, Y_test
+
+
+
+def divider3 (X,Y):
+    # X_train = []
+    # Y_train = []
+    # X_test = []
+    # Y_test = []
+
+    # for i, rec in enumerate(X):
+    #     length = len(rec)
+    #     X_test.append(rec[:int(20*length/100)])
+    #     X_train.append(rec[int(20*length/100):])
+    #     Y_test.append(Y[i][:int(20*length/100)])
+    #     Y_train.append(Y[i][int(20*length/100):])
+    
+
+    
+    # random chunk division
+    X_train = []
+    Y_train = []
+    X_test = []
+    Y_test = []
+    for i in range(X.size):
+        
+        rec = X[i]
+        lbl = Y[i]
+
+        events_borders = eventFinder(Y[i])
+        event_lens = (events_borders[:, 1] - events_borders[:, 0])+1
+        extraction_lens = np.round((event_lens*20)/100)
+        x_test = []
+        y_test = []
+        x_train = []
+        y_train = []
+        for event in range(events_borders.shape[0]):
+            s = events_borders[event,0]
+            split = int(events_borders[event, 0] + extraction_lens[event])
+            e = events_borders[event,1]+1
+            x_test.append(X[i][s:split])
+            y_test.append(Y[i][s:split])
+            x_train.append(X[i][split:e])
+            y_train.append(Y[i][split:e])
+
+
+        X_test.append(np.concatenate(x_test))
+        Y_test.append(np.concatenate(y_test))
+        X_train.append(np.concatenate(x_train))
+        Y_train.append(np.concatenate(y_train))
+
+    X_train, X_test = np.asarray(X_train, dtype="object"), np.asarray(X_test, dtype="object")
+    Y_train, Y_test = np.asarray(Y_train, dtype="object"), np.asarray(Y_test, dtype="object")
 
     
     return X_train, Y_train, X_test, Y_test
