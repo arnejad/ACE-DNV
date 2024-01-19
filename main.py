@@ -2,10 +2,11 @@
 
 import numpy as np
 
-from modules.eventDetector import suffle_trainAndTest as shuffle_trainAndTest_RF
-from modules.eventDetector import trainAndTest as trainAndTest_RF
-from modules.eventDetector import pred_detector as pred_RF
-from modules.preprocess import data_balancer_Random, divider_randomInnerEventSplit, divider_twoChunkSplit, data_balancer_nonRandom
+from modules.classifier import suffle_trainAndTest as shuffle_trainAndTest_RF
+from modules.classifier import trainAndTest as trainAndTest_RF
+from modules.classifier import pred_detector as pred_RF
+from modules.preprocess import data_balancer_Random, divider_randomInnerEventSplit, data_balancer_nonRandom
+from modules.utils import finalReportPrint
 from modules.GiW import GiWPrep
 from config import VALID_METHOD, OUT_DIR, EXP
 
@@ -63,9 +64,6 @@ elif VALID_METHOD == "TTS": # for train/test split
         supp_sample.append(supp_s)
         supp_event.append(supp_e)
 
-    # # calculate average
-    # f1_samp_avg = np.mean(f1s_sample, axis=0)
-    # f1_event_avg =  np.mean(f1s_event, axis=0)
 
 
 elif VALID_METHOD == "NV": # for prediction using trained model
@@ -73,7 +71,7 @@ elif VALID_METHOD == "NV": # for prediction using trained model
     preds = pred_RF(ds_x, ds_y, OUT_DIR+'/models/RF.sav')
 
 else:
-    print("incorrect validation method in the configuration file")
+    print("validation method is not set properly in the configuration file")
     print("AD-HOC: Shuffle and learning. CAUTION: event-level scores will be meaningless in this experiment")
     
     ds_x, ds_y = divider_randomInnerEventSplit(ds_x, ds_y)
@@ -87,26 +85,6 @@ f1_event_avg =  np.sum(f1s_event*(supp_event/np.sum(supp_event, axis=0)), axis=0
 
 
 # Final report
-print("Sample-level F1-Score weighted average:")
-if EXP == "2-2":
-    print("GFi+GFo: " + str(f1_samp_avg[0]) + " GP: " + str(f1_samp_avg[1]) + " GS: " + str(f1_samp_avg[2]) + " W AVG: " + str(f1_samp_avg[4]))
-elif (EXP == "1-1" or EXP == "1-3"):
-    print("GS: " + str(f1_samp_avg[0]) + " GFo: " + str(f1_samp_avg[1]) + " W AVG: " + str(f1_samp_avg[3]))
-elif EXP == "1-2":
-    print("GFi: " + str(f1_samp_avg[0]) + " GP: " + str(f1_samp_avg[1]) + " GS: " + str(f1_samp_avg[2]) +  " W AVG: " + str(f1_samp_avg[4]))
-else:
-    print("GFi: " + str(f1_samp_avg[0]) + " GP: " + str(f1_samp_avg[1]) + " GS: " + str(f1_samp_avg[2]) + " GFo: " + str(f1_samp_avg[3]) + " W AVG: " + str(f1_samp_avg[5]))
-
-
-print("Event-level F1-Score weighted average:")
-if EXP == "2-2":
-    print("GFi+GFo: " + str(f1_event_avg[0]) + " GP: " + str(f1_event_avg[1]) + " GS: " + str(f1_event_avg[2]) + " W AVG: " + str(f1_event_avg[4]))
-elif (EXP == "1-1" or EXP == "1-3"):
-    print("GS: " + str(f1_event_avg[0]) + " GFo: " + str(f1_event_avg[1]) + " W AVG: " + str(f1_event_avg[3]))
-elif EXP == "1-2":
-    print("GFi: " + str(f1_event_avg[0]) + " GP: " + str(f1_event_avg[1]) + " GS: " + str(f1_event_avg[2]) +  " W AVG: " + str(f1_event_avg[4]))
-else:
-    print("GFi: " + str(f1_event_avg[0]) + " GP: " + str(f1_event_avg[1]) + " GS: " + str(f1_event_avg[2]) + " GFo: " + str(f1_event_avg[3]) + " W AVG: " + str(f1_event_avg[5]))
-
+finalReportPrint(EXP, f1_samp_avg, f1_event_avg)
 # np.savetxt(OUT_DIR+'LOO_f1S.csv', f1s_sample, delimiter=",")
 # np.savetxt(OUT_DIR+'LOO_f1E.csv', f1s_event, delimiter=",")

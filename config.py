@@ -7,7 +7,7 @@ DATASET = "GiW-selected"
 INP_DIR = '/media/ash/Expansion/data/GiW/'
 CH2STREAM_MODEL_DIR = '/media/ash/Expansion/2ch2stream_notredame.t7'  # Directory to the saved weights for 2ch2stream network
 
-EXP = "2-1"     #two digits: first one experiment number according to paper. second, subconditions
+EXP = "1-2"     #two digits: first one experiment number according to paper. second, subconditions
                 #Experiment 1: 1)IndoorWalk 2)BallCatch 3)visualSearch
                 #Experiment 2: 1)all data, separate GFi and GFo, 2) All data, combined GFi and GFo (similar to what GiW did)
                 # Experiment 3: Indoorwalk + ball catch with agreement labels

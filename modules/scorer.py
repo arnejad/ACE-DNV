@@ -35,10 +35,12 @@ def count_event(preds, gt):
 
 
 def print_results(sample_preds, sample_gt, event_preds, event_gt):
-    target_names = ["GFi", "GP", "GS", "GF"]
+    target_names = ["GFi", "GP", "GS", "GFo"]
     # target_names = ["Fixation", "Gaze Pursuit", "Gaze Shift"]
     if (EXP == "1-1" or EXP == "1-3"):
         target_names = [ "GS", "GFo"]
+    elif(EXP == "1-2"):
+        target_names = ["GFi", "GP", "GS"]
     elif (EXP == "2-2"):
         target_names = ["GFi+GFo", "GP", "GS"]
 

@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
+import matplotlib
 from os import path, mkdir
 from config import OUT_DIR
 import numpy as np
+
+font = {'size'   : 25}
 
 def knowledgePanel_init():  # opens and initialized the visualization configs for knowledge panel 
     plt.rcParams["figure.figsize"] = [19, 20]
@@ -38,11 +41,13 @@ def gazeCoordsPlotSave(gazes):
     plt.close()
 
 def showFeatureHist(model):
-    features = ["G vel", "G dir", "HR vel", "HR dir", "B vel", "Patch sim"]
+    
+    features = ["EM vel", "EM dir", "HR vel", "HR dir", "BT vel", "Patch sim"]
     importances = model.feature_importances_
     # indices = importances
     # plt.title('Feature Importances')
     fig1, ax1 = plt.subplots()
+    matplotlib.rc('font', **font)
     ax1.barh(range(len(importances)), importances, align='center')
     ax1.invert_yaxis()
     plt.yticks(range(len(features)), features)

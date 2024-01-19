@@ -5,7 +5,7 @@ import numpy as np
 import modules.visualizer as visual
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
-from modules.decisionMaker import print_scores as print_scores
+from modules.utils import print_scores as print_scores
 from sklearn.model_selection import train_test_split
 from modules.preprocess import data_stats
 from modules.scorer import score
