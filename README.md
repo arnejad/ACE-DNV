@@ -27,7 +27,7 @@ To execute the code, edit the `config.py` file and select your dataset and input
 In case of using this code in your research or project please cite the paper below:
 
 ```
-Citation will be provided
+Nejad, A., de Haan, G., Heutink, J. et al. ACE-DNV: Automatic classification of gaze events in dynamic natural viewing. Behav Res (2024). https://doi.org/10.3758/s13428-024-02358-8
 ```
 
 
